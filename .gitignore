@@ -1,0 +1,9 @@
+﻿.playwright-profile/
+work/
+reports/
+artifact-solutions/
+artifact-solutions-v2/
+artifact-webinars/
+.claude/skills/uat-live-page-compare/scripts/work/
+__pycache__/
+*.pyc

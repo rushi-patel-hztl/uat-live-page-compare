@@ -1,0 +1,532 @@
+<title>Special pages QA log</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a QA tracker - progress and locale heat grid on top, shared fixes with one owner each, then one section per page with its issues as rows and a work strip (status, severity, assignee, notes) under each. */
+:root {
+  --bg: #f4f5f7; --surface: #ffffff; --sunk: #e9ecf1; --fg: #161a22; --muted: #5a6273; --line: #d8dce4;
+  --accent: #1f4fd1; --accent-soft: #e4ebfc; --uat: #b4361f; --live: #17734a;
+  --heat0: #eef1f5; --heat1: #fbe3cf; --heat2: #f6b98a; --heat3: #e9844a; --heat4: #c4521f; --heat-ink: #3b1606;
+  --sevB: #a8231b; --sevB-bg: #fde7e4; --sevM: #7a4f00; --sevM-bg: #fdf0d2; --sevN: #4a5468; --sevN-bg: #e9ecf1;
+  --font-ui: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12151b; --surface: #1a1e26; --sunk: #232833; --fg: #e7eaf0; --muted: #9aa2b2; --line: #2f3542;
+  --accent: #86a3ff; --accent-soft: #233056; --uat: #ff8a73; --live: #5cc993;
+  --heat0: #20252f; --heat1: #4a2c1c; --heat2: #7a3f1f; --heat3: #b05524; --heat4: #e0713a; --heat-ink: #fff1e8;
+  --sevB: #ff9d92; --sevB-bg: #4a1f1b; --sevM: #f2c46b; --sevM-bg: #40300f; --sevN: #b4bccb; --sevN-bg: #2a303c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #12151b; --surface: #1a1e26; --sunk: #232833; --fg: #e7eaf0; --muted: #9aa2b2; --line: #2f3542;
+  --accent: #86a3ff; --accent-soft: #233056; --uat: #ff8a73; --live: #5cc993;
+  --heat0: #20252f; --heat1: #4a2c1c; --heat2: #7a3f1f; --heat3: #b05524; --heat4: #e0713a; --heat-ink: #fff1e8;
+  --sevB: #ff9d92; --sevB-bg: #4a1f1b; --sevM: #f2c46b; --sevM-bg: #40300f; --sevN: #b4bccb; --sevN-bg: #2a303c; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font-ui); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 32px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+.wrap > *, #pages > * { min-width: 0; }
+.panel, .page, #pages, .wrap > section { grid-template-columns: minmax(0, 1fr); }
+.toolbar select { flex: 1 1 130px; min-width: 0; }
+h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.15; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0; text-wrap: balance; }
+h3 { font-size: 16px; margin: 0; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); overflow-wrap: anywhere; }
+.lede { color: var(--muted); max-width: 72ch; margin-top: 8px; }
+.eyebrow { font: 500 11.5px var(--font-data); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 32px; margin-top: 18px; }
+.stat b { display: block; font: 500 28px var(--font-data); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 13px; }
+.progress { display: grid; gap: 8px; margin-top: 18px; max-width: 760px; }
+.bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--sunk); }
+.bar i { display: block; height: 100%; }
+.bar .f { background: var(--live); } .bar .p { background: var(--accent); } .bar .w { background: var(--muted); }
+.plabel { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 13px; color: var(--muted); align-items: center; }
+.plabel b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ghost { font: inherit; font-size: 13px; color: var(--accent); background: var(--accent-soft); border: 0; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+.ghost:disabled { opacity: .55; cursor: default; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
+.scroll { overflow-x: auto; }
+table.heat { border-collapse: separate; border-spacing: 3px; font: 12.5px var(--font-data); font-variant-numeric: tabular-nums; }
+.heat th { font-weight: 500; color: var(--muted); padding: 2px 4px; text-align: center; }
+.heat th.row { text-align: left; font-family: var(--font-ui); font-size: 13.5px; color: var(--fg); white-space: nowrap; padding-right: 10px; }
+.heat th.row button { all: unset; cursor: pointer; } .heat th.row button:hover { color: var(--accent); }
+.heat td { width: 38px; height: 30px; text-align: center; border-radius: 4px; background: var(--heat0); color: var(--muted); }
+.heat td.h1 { background: var(--heat1); color: var(--heat-ink); } .heat td.h2 { background: var(--heat2); color: var(--heat-ink); }
+.heat td.h3 { background: var(--heat3); color: var(--heat-ink); } .heat td.h4 { background: var(--heat4); color: #fff; font-weight: 500; }
+.heat td.na { background: transparent; border: 1px dashed var(--line); }
+.heat td.tot { background: transparent; color: var(--fg); font-weight: 500; }
+.heat td.fx { background: transparent; color: var(--fg); width: auto; min-width: 74px; padding: 0 6px; white-space: nowrap; text-align: left; }
+.heat td.fx .bar { height: 5px; margin-top: 3px; }
+.note { color: var(--muted); font-size: 13.5px; max-width: 80ch; }
+.shared { display: grid; gap: 0; }
+.shared .row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 10px 12px; padding: 14px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.shared .row:first-child { border-top: 0; }
+.shared .work { grid-column: 2 / -1; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.count { font: 500 20px var(--font-data); font-variant-numeric: tabular-nums; }
+.count small { display: block; font: 11px var(--font-ui); color: var(--muted); }
+.refs { font: 12px var(--font-data); color: var(--muted); }
+.refs button { all: unset; cursor: pointer; color: var(--accent); }
+.fixline { font-size: 13.5px; color: var(--muted); }
+.fix { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); margin-right: 6px; white-space: nowrap; }
+.gp { font-size: 12.5px; color: var(--muted); }
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+select, input[type=search], input[type=text] { font: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; max-width: 100%; }
+input[type=search] { flex: 1 1 200px; }
+.chk { display: flex; gap: 7px; align-items: center; font-size: 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); cursor: pointer; white-space: nowrap; }
+.chk input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.multi { position: relative; flex: 1 1 130px; min-width: 0; }
+.multi summary { list-style: none; cursor: pointer; font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 7px 28px 7px 10px; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.multi summary::-webkit-details-marker { display: none; }
+.multi summary::after { content: ""; position: absolute; right: 11px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-70%) rotate(45deg); }
+.multi[open] summary { border-color: var(--accent); }
+.multi .menu { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; min-width: max(100%, 240px); max-height: min(60vh, 420px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 6px; }
+.multi .acts { display: flex; gap: 6px; padding: 2px 2px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.multi .acts button { font: inherit; font-size: 13px; color: var(--accent); background: var(--accent-soft); border: 0; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+.multi label { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.multi label:hover { background: var(--sunk); }
+.multi label input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.multi label small { margin-left: auto; color: var(--muted); font: 12px var(--font-data); }
+.toolbar .shown { color: var(--muted); font-size: 13px; margin-left: auto; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.page { display: grid; gap: 4px; scroll-margin-top: 70px; }
+.page-head { display: grid; gap: 6px; padding-bottom: 10px; }
+.urls { display: grid; gap: 2px; font: 12.5px var(--font-data); color: var(--muted); }
+.urls .u { color: var(--uat); } .urls .l { color: var(--live); }
+.rc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.issue { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 18px 0 18px 12px; border-top: 1px solid var(--line); box-shadow: inset 3px 0 0 var(--stc, transparent); }
+.issue.s-prog { --stc: var(--accent); } .issue.s-fixed { --stc: var(--live); } .issue.s-wont { --stc: var(--muted); }
+.issue.s-fixed h3, .issue.s-wont h3 { color: var(--muted); }
+.num { font: 500 15px var(--font-data); color: var(--muted); }
+.issue .body { display: grid; gap: 8px; min-width: 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.kind, .sev { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; }
+.kind { background: var(--sunk); color: var(--fg); }
+.kind.Locale, .kind.Source, .kind.Target { background: var(--heat1); color: var(--heat-ink); }
+.sev.Blocker { background: var(--sevB-bg); color: var(--sevB); } .sev.Major { background: var(--sevM-bg); color: var(--sevM); } .sev.Minor { background: var(--sevN-bg); color: var(--sevN); }
+.rcc { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.rcc.regressed { background: var(--sevB-bg); color: var(--sevB); } .rcc.fixed { background: var(--sunk); color: var(--live); }
+.vals { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 18px; font-size: 13.5px; }
+.vals div { min-width: 0; overflow-wrap: anywhere; }
+.vals .k { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; display: block; }
+.vals .k.u { color: var(--uat); } .vals .k.l { color: var(--live); }
+.langs { display: flex; flex-wrap: wrap; gap: 4px; }
+.lang { font: 500 11.5px var(--font-data); padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); }
+.lang.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); text-decoration: none; cursor: pointer; }
+a.lang.on:hover, a.lang.on:focus-visible { background: var(--accent); color: var(--surface); outline: none; }
+.lang.off { opacity: .4; cursor: not-allowed; background: transparent; border-style: dashed; }
+.cause { font-size: 13.5px; color: var(--muted); }
+.also { font-size: 12.5px; color: var(--muted); }
+.also button { all: unset; cursor: pointer; color: var(--accent); }
+.work { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px; background: var(--sunk); border-radius: 8px; min-width: 0; }
+.work select, .work input[type=text] { font-size: 13px; padding: 5px 8px; flex: 0 1 auto; min-width: 0; }
+.work input.ow { flex: 1 1 150px; }
+.work textarea { flex: 1 1 100%; font: inherit; font-size: 13px; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; resize: vertical; min-height: 38px; min-width: 0; }
+.work button { font: inherit; font-size: 13px; color: var(--accent); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+.work button:disabled, .work select:disabled, .work input:disabled, .work textarea:disabled { opacity: .6; cursor: not-allowed; }
+.work .by { flex: 1 1 100%; font-size: 12px; color: var(--muted); }
+.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 4px; }
+.shots figure { margin: 0; display: grid; gap: 4px; min-width: 0; }
+.shots figcaption { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; }
+.shots img { width: 100%; max-height: 360px; object-fit: cover; object-position: top; border: 1px solid var(--line); border-radius: 6px; cursor: zoom-in; background: var(--sunk); }
+.noshot { font-size: 13px; color: var(--muted); }
+details { font-size: 14px; } details > summary { cursor: pointer; font-weight: 600; padding-block: 6px; }
+details ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); }
+.empty { color: var(--muted); padding: 24px 0; }
+.lightbox { position: fixed; inset: 0; background: rgba(8, 10, 16, .9); display: none; place-items: center; z-index: 20; cursor: zoom-out; overflow: auto;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.lightbox.open { display: grid; }
+.lightbox img { max-width: 100%; }
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--fg); color: var(--bg); padding: 9px 14px; border-radius: 8px; font-size: 13.5px; max-width: calc(100vw - 32px); }
+footer { color: var(--muted); font-size: 13px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">UAT vs live QA tracker</span>
+    <h1 id="heading"></h1>
+    <p class="lede" id="intro"></p>
+    <div class="stats" id="stats"></div>
+    <div class="progress" id="progress"></div>
+    <p class="note" id="dbNote" hidden></p>
+  </header>
+
+  <section class="panel" aria-labelledby="hHeat">
+    <h2 id="hHeat">Issues per page and locale</h2>
+    <div class="scroll"><table class="heat" id="heat"></table></div>
+    <p class="note" id="heatNote"></p>
+    <p class="note">Each cell counts the issues that affect that locale on that page. A dashed cell was not checked. The Fixed column counts every issue on the page, whatever the filters.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="hShared" id="sharedPanel">
+    <h2 id="hShared">Fix once, clears several pages</h2>
+    <p class="note">The same fault on more than one page, with the place it is most likely fixed. Give each group one owner and one status, then apply it to every issue in the group.</p>
+    <div class="shared" id="shared"></div>
+  </section>
+
+  <section aria-labelledby="hAll" style="display:grid;gap:18px">
+    <h2 id="hAll">All issues</h2>
+    <div class="toolbar">
+      <select id="fPage" aria-label="Page"></select>
+      <select id="fLang" aria-label="Locale"></select>
+      <details class="multi" id="kindDD"><summary id="kindSum" aria-label="Issue type">All types</summary>
+        <div class="menu"><div class="acts"><button type="button" id="kAll">Select all</button><button type="button" id="kNone">Unselect all</button></div><div id="kList"></div></div></details>
+      <select id="fStatus" aria-label="Status"></select>
+      <select id="fSev" aria-label="Severity"></select>
+      <label class="chk"><input type="checkbox" id="fMine">Mine</label>
+      <select id="fSort" aria-label="Sort"></select>
+      <input type="search" id="fText" placeholder="Search issues" aria-label="Search issues">
+      <span class="shown" id="shown"></span>
+    </div>
+    <div id="pages" style="display:grid;gap:34px"></div>
+  </section>
+  <footer id="foot"></footer>
+</div>
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Screenshot"><img alt=""></div>
+<datalist id="owners"></datalist>
+<div id="toast" role="status" hidden></div>
+
+<script type="application/json" id="data">{"locales": [["EN", "English"], ["DE", "German"], ["FR", "French"], ["ES", "Spanish"], ["JA", "Japanese"], ["PT", "Portuguese"], ["CN", "Chinese (Simplified)"], ["HU", "Hungarian"], ["IT", "Italian"], ["KO", "Korean"], ["NL", "Dutch"], ["PL", "Polish"], ["TH", "Thai"], ["RU", "Russian"], ["CS", "Czech"], ["TW", "Chinese (Traditional)"], ["TR", "Turkish"]], "title": "TeamViewer special pages QA log", "heading": "TeamViewer special pages: internal vs live", "intro": "9 special pages on internal.teamviewer.com compared with www.teamviewer.com in all 17 locales at 1440px wide, header CTA and menu included, footer and top-bar utility links excluded; checked 22 October 2026. Source 404 means live (source) returns 404; Target 404 means the internal page (target) returns 404.", "heat_note": "Most issues sit in locales that live does not publish (HU, PL, TH, RU, CS, TW, TR) and in the German UAT pages, which repeat blocks many times or load empty.", "built": "23 October 2026", "pages": [{"slug": "special-request-callback", "label": "Request callback", "title": "Thank you for your request", "uat": "https://internal.teamviewer.com/en/special/request-callback/", "live": "https://www.teamviewer.com/en/special/request-callback/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Thank-you hero image", "kind": "UI", "issue": "Hero image has square corners and is smaller on UAT; live has rounded corners", "uat": "square corners, 656x437", "live": "rounded corners, 672x448", "cause": "Image style/rounding not applied (confirmed in Portuguese; other locales share the same lead)", "sev": "Minor", "rc": "", "langs": ["PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "CS", "TR"], "shots": {"uat": "screenshots/special-request-callback/1-portuguese-uat.png", "live": "screenshots/special-request-callback/1-portuguese-live.png"}, "group": "heroimg", "also": ["special-sales-upgrade-request", "special-security-explained"]}, {"id": 2, "component": "Thank-you hero (text to image spacing)", "kind": "UI", "issue": "Gap between intro text and image is about twice live's", "uat": "about 67px", "live": "about 34px", "cause": "Different spacing/margin between components", "sev": "Minor", "rc": "", "langs": ["PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "CS", "TR"], "shots": {"uat": "screenshots/special-request-callback/2-portuguese-uat.png", "live": "screenshots/special-request-callback/2-portuguese-live.png"}, "group": "", "also": []}], "not_issues": ["Header phone number differs by locale/region: expected.", "Body text #2D2D2D vs #545454: accepted.", "UAT heading is H2, live H1: semantic only, not visual.", "Text-lead differences in L2 come from header/footer menu text in the block dump: out of scope.", "Background #FFFFFF vs none: no visible difference."], "couldnt_check": ["Not compared (load timed out): EN, ES, JA, TW (live failed), FR, RU (UAT failed), DE (both failed). Re-capture needed.", "Dropdowns/video/anchors: page has none besides the hero."], "updated": "22 October 2026"}, {"slug": "special-reset-management", "label": "Reset management", "title": "Reclaim your Free Version", "uat": "https://internal.teamviewer.com/en/special/reset-management/", "live": "https://www.teamviewer.com/en/special/reset-management/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Hero", "kind": "Content", "issue": "Eyebrow text 'PRIVATE USER?' above the hero heading is missing on UAT, so the hero is also shorter", "uat": "no eyebrow, hero 276px high", "live": "'PRIVATE USER?' shown, hero 326px high", "cause": "Eyebrow field not migrated", "sev": "Major", "rc": "", "langs": ["EN", "DE", "FR", "JA", "PL"], "shots": {"uat": "screenshots/special-reset-management/1-english-uat.png", "live": "screenshots/special-reset-management/1-english-live.png"}, "group": "", "also": []}, {"id": 2, "component": "Reclaim your free version (Form / login)", "kind": "Missing component", "issue": "Login form ('Please log in with your TeamViewer credentials', Log in button) and its arrow graphic are missing on UAT; heading and End User Agreement link are left-aligned instead of centred", "uat": "0 forms, heading left-aligned", "live": "1 form, heading centred, 108px gap below hero", "cause": "Form component not added on UAT", "sev": "Blocker", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "HU", "IT", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {"uat": "screenshots/special-reset-management/2-english-uat.png", "live": "screenshots/special-reset-management/2-english-live.png"}, "group": "", "also": []}, {"id": 3, "component": "Cards (private / commercial use)", "kind": "Image", "issue": "Card icons are much smaller on UAT and card headings use a different colour", "uat": "icons 32x32, headings #050A52", "live": "icons 90x90, headings #141414", "cause": "Different card component variant", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "HU", "IT", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {"uat": "screenshots/special-reset-management/3-english-uat.png", "live": "screenshots/special-reset-management/3-english-live.png"}, "group": "", "also": []}, {"id": 4, "component": "Header navigation (main menu)", "kind": "Header", "issue": "Menu labels differ: German 'ONE Platform' vs live 'ONE Plattform'; Spanish 'Enterprise' vs live 'Empresa'", "uat": "ONE Platform (DE), Enterprise (ES)", "live": "ONE Plattform (DE), Empresa (ES)", "cause": "Untranslated menu labels", "sev": "Major", "rc": "", "langs": ["DE", "ES"], "shots": {}, "group": "nav", "also": ["special-sales-upgrade-request", "special-security-explained", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}], "not_issues": [], "couldnt_check": ["Chinese (Simplified) and Korean: live failed to load, not compared."], "updated": "22 October 2026"}, {"slug": "special-sales-upgrade-request", "label": "Sales upgrade request", "title": "Thank you for your request (Sales upgrade request)", "uat": "https://internal.teamviewer.com/en/special/sales-upgrade-request/", "live": "https://www.teamviewer.com/en/special/sales-upgrade-request/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Thank-you block (Hero)", "kind": "Duplicated component", "issue": "German UAT repeats the thank-you block 8 times and has no image; live has one block with an image", "uat": "8 blocks, 0 images", "live": "1 block, 1 image", "cause": "Component added multiple times in DE authoring", "sev": "Blocker", "rc": "", "langs": ["DE"], "shots": {"uat": "screenshots/special-sales-upgrade-request/1-german-uat.png", "live": "screenshots/special-sales-upgrade-request/1-german-live.png"}, "group": "", "also": []}, {"id": 2, "component": "Thank-you hero image", "kind": "Image", "issue": "Image is a different asset, 656x437 with square corners and descriptive alt; live is consultation-meeting-success 672x448 with rounded corners and empty alt", "uat": "656x437, square, alt 'Bank manager shaking hands...'", "live": "672x448, rounded, alt empty", "cause": "Different image/rendition and style", "sev": "Major", "rc": "", "langs": ["EN", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {"uat": "screenshots/special-sales-upgrade-request/2-english-uat.png", "live": "screenshots/special-sales-upgrade-request/2-english-live.png"}, "group": "heroimg", "also": ["special-request-callback", "special-security-explained"]}, {"id": 3, "component": "Thank-you block", "kind": "Spacing / heading", "issue": "Heading starts about 64px below header and image sits 76px under text on UAT; live 104px and 46px. Heading is H2 on UAT, H1 on live", "uat": "top 64px, text-image gap 76px, H2", "live": "top 104px, text-image gap 46px, H1", "cause": "Padding and heading level not matched", "sev": "Minor", "rc": "", "langs": ["EN", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {"uat": "screenshots/special-sales-upgrade-request/2-english-uat.png", "live": "screenshots/special-sales-upgrade-request/2-english-live.png"}, "group": "", "also": []}, {"id": 4, "component": "Header navigation (main menu)", "kind": "Header", "issue": "DE menu item reads 'ONE Platform' vs live 'ONE Plattform'; ES reads 'Enterprise' vs live 'Empresa'", "uat": "ONE Platform / Enterprise", "live": "ONE Plattform / Empresa", "cause": "Untranslated menu labels", "sev": "Major", "rc": "", "langs": ["DE", "ES"], "shots": {"uat": "screenshots/special-sales-upgrade-request/3-german-uat.png", "live": "screenshots/special-sales-upgrade-request/3-german-live.png"}, "group": "nav", "also": ["special-reset-management", "special-security-explained", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}], "not_issues": ["Body text #2D2D2D vs #545454: accepted."], "couldnt_check": ["French: live failed to load during capture, not compared."], "updated": "22 October 2026"}, {"slug": "special-security-explained", "label": "Security explained", "title": "What makes TeamViewer remote access secure?", "uat": "https://internal.teamviewer.com/en/special/security-explained/", "live": "https://www.teamviewer.com/en/special/security-explained/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Whole page", "kind": "Source 404", "issue": "Live returns 404 for 14 locales where UAT loads; JA, CN, KO, TH, RU, TW UAT content is untranslated", "uat": "200, content shown (untranslated in JA/CN/KO/TH/RU/TW)", "live": "404", "cause": "Locales not published on live", "sev": "Blocker", "rc": "", "langs": ["ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {"uat": "screenshots/special-security-explained/1-spanish-uat.png", "live": "screenshots/special-security-explained/1-spanish-live.png"}, "group": "loc404", "also": ["special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 2, "component": "Page blocks", "kind": "Duplicated component", "issue": "German UAT repeats section blocks (178 blocks vs 11 on live)", "uat": "178 blocks", "live": "11 blocks", "cause": "Components duplicated in DE authoring", "sev": "Blocker", "rc": "", "langs": ["DE"], "shots": {"uat": "screenshots/special-security-explained/2-german-uat.png", "live": "screenshots/special-security-explained/2-german-live.png"}, "group": "dedup", "also": ["special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside"]}, {"id": 3, "component": "Hero (What makes TeamViewer remote access secure?)", "kind": "Image / colour / spacing", "issue": "Hero image has rounded corners on UAT, square on live; body text colour #474747 vs live navy; heading-to-text gap smaller; UAT Get started link is absolute path, live #get-started (same page)", "uat": "rounded, #474747, gap 16px", "live": "square, navy, gap 48px", "cause": "Hero variant", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR"], "shots": {"uat": "screenshots/special-security-explained/3-english-uat.png", "live": "screenshots/special-security-explained/3-english-live.png"}, "group": "heroimg", "also": ["special-request-callback", "special-sales-upgrade-request"]}, {"id": 4, "component": "Text and image sections (Securing, Protecting, Ensuring)", "kind": "Layout / spacing", "issue": "Text column wider on UAT (about 630px, heading one line) vs live about 410px with wrapped heading; gaps below sections differ (0 vs 32-48px)", "uat": "col 630px, gap 0px", "live": "col 410px, gap 32-48px", "cause": "Column ratio and padding", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR"], "shots": {"uat": "screenshots/special-security-explained/4-english-uat.png", "live": "screenshots/special-security-explained/4-english-live.png"}, "group": "", "also": []}, {"id": 5, "component": "Feature accordions (Infrastructure, Account, Connection, Reporting)", "kind": "Accordion style", "issue": "UAT items lack top divider, smaller title-to-text gap, titles #050A52 vs live #141414; CTA heights differ (28px vs 80px)", "uat": "no divider, gap 8px, #050A52", "live": "divider, gap 28px, #141414", "cause": "Accordion variant", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR"], "shots": {"uat": "screenshots/special-security-explained/5-english-uat.png", "live": "screenshots/special-security-explained/5-english-live.png"}, "group": "", "also": []}, {"id": 6, "component": "Header navigation (main menu)", "kind": "Header", "issue": "DE 'ONE Platform' vs live 'ONE Plattform'; ES 'Enterprise' vs live 'Empresa'", "uat": "ONE Platform / Enterprise", "live": "ONE Plattform / Empresa", "cause": "Untranslated menu labels", "sev": "Major", "rc": "", "langs": ["DE", "ES"], "shots": {}, "group": "nav", "also": ["special-reset-management", "special-sales-upgrade-request", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}], "not_issues": ["Body text colour #2D2D2D vs #545454 accepted."], "couldnt_check": ["Not verified individually: DE-only background differences (#F7F7F7)."], "updated": "22 October 2026"}, {"slug": "special-splashtop-alternative", "label": "Splashtop alternative", "title": "Looking for an alternative to Splashtop?", "uat": "https://internal.teamviewer.com/en/special/splashtop-alternative/", "live": "https://www.teamviewer.com/en/special/splashtop-alternative/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Whole page", "kind": "Source 404", "issue": "Live returns 404 for these locales while UAT loads (only a partial page); TH and TW UAT content is untranslated", "uat": "loads (3-4 blocks)", "live": "404", "cause": "Locale versions not published on live / not translated", "sev": "Blocker", "rc": "", "langs": ["HU", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {}, "group": "loc404", "also": ["special-security-explained", "special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 2, "component": "Whole page", "kind": "Locale", "issue": "German UAT page is empty (no lang, 0 blocks); live has the full German page with 8 components", "uat": "empty page", "live": "8 components", "cause": "German version not created", "sev": "Blocker", "rc": "", "langs": ["DE"], "shots": {}, "group": "", "also": []}, {"id": 3, "component": "Comparison table (Top 10 alternatives)", "kind": "Content", "issue": "Eyebrow label (COMPARISON) above the heading is missing on UAT", "uat": "no label", "live": "COMPARISON #3056EF", "cause": "Eyebrow field not filled", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "NL"], "shots": {"uat": "screenshots/special-splashtop-alternative/3-english-uat.png", "live": "screenshots/special-splashtop-alternative/3-english-live.png"}, "group": "eyebrow", "also": ["special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 4, "component": "Why choose TeamViewer (feature cards)", "kind": "UI", "issue": "Feature bullet lists have no check icons on UAT and card headings are navy; live has check icons and #141414 headings", "uat": "no icons, heading #050A52", "live": "check icons, heading #141414", "cause": "List style / heading colour not mapped", "sev": "Minor", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "NL"], "shots": {"uat": "screenshots/special-splashtop-alternative/4-english-uat.png", "live": "screenshots/special-splashtop-alternative/4-english-live.png"}, "group": "", "also": []}, {"id": 5, "component": "Pricing cards (TeamViewer supports your business)", "kind": "Content", "issue": "UAT lacks the BOTTOM LINE label, shows different card subtitles and badges, all Buy now buttons are #3056EF, and feature lists differ", "uat": "Buy now #3056EF on all cards; 'Access up to 200 unattended devices'", "live": "Buy now #050A52 on Premium/Corporate; 'For individual IT support and work'; BOTTOM LINE label", "cause": "Different pricing component variant", "sev": "Major", "rc": "", "langs": ["EN", "FR", "JA", "PT", "CN", "IT"], "shots": {"uat": "screenshots/special-splashtop-alternative/5-english-uat.png", "live": "screenshots/special-splashtop-alternative/5-english-live.png"}, "group": "", "also": []}, {"id": 6, "component": "Awards heading", "kind": "Content", "issue": "Heading typo on UAT: 'suppor'", "uat": "suppor", "live": "support", "cause": "Authoring typo", "sev": "Minor", "rc": "", "langs": ["EN"], "shots": {"uat": "screenshots/special-splashtop-alternative/6-english-uat.png", "live": "screenshots/special-splashtop-alternative/6-english-live.png"}, "group": "", "also": []}, {"id": 7, "component": "Awards badges", "kind": "Image", "issue": "G2 award badges are smaller on UAT", "uat": "92x106", "live": "130x150", "cause": "Different asset/size", "sev": "Minor", "rc": "", "langs": ["EN"], "shots": {"uat": "screenshots/special-splashtop-alternative/7-english-uat.png", "live": "screenshots/special-splashtop-alternative/7-english-live.png"}, "group": "", "also": []}, {"id": 8, "component": "Accordions (Concerns, FAQ)", "kind": "URL", "issue": "Live updates the URL hash on expanding an item (e.g. #qalist-...-item-...), UAT leaves it unchanged, so deep links do not work", "uat": "(none)", "live": "#qalist-4efe1e7068-item-fd8539a693", "cause": "Deep-link setting disabled on UAT accordion (from capture clicks, not re-clicked)", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "NL"], "shots": {}, "group": "faq", "also": ["special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 9, "component": "Hero (Looking for an alternative)", "kind": "Background", "issue": "Hero background is flat lavender with a hero image on UAT; live is a gradient", "uat": "flat, tighter spacing below (295px)", "live": "gradient, 360px below", "cause": "Background/gradient variant not mapped (from EN slices)", "sev": "Minor", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "NL"], "shots": {}, "group": "", "also": []}], "not_issues": ["Accordion answer text 'missing' on live: same text exists under other pairings.", "Body text #2D2D2D vs #545454: accepted.", "Header phone numbers differ by region."], "couldnt_check": ["KO not compared (live failed to load).", "FR duplicated component and DE/ES header nav labels not individually confirmed on screen."], "updated": "22 October 2026"}, {"slug": "special-teamviewer-alternative", "label": "TeamViewer alternative", "title": "Looking for a TeamViewer alternative in 2026?", "uat": "https://internal.teamviewer.com/en/special/teamviewer-alternative/", "live": "https://www.teamviewer.com/en/special/teamviewer-alternative/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Whole page", "kind": "Locale", "issue": "Page exists on UAT but live returns 404 (not listed on live)", "uat": "UAT loads (200)", "live": "Live 404", "cause": "Locale pages published on UAT that do not exist on live; confirm if intended", "sev": "Blocker", "rc": "", "langs": ["HU", "TH", "RU", "CS", "TW"], "shots": {}, "group": "loc404", "also": ["special-security-explained", "special-splashtop-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 2, "component": "Eyebrow labels (Basic Text / Lead Para)", "kind": "Content", "issue": "Blue uppercase eyebrow label above headings is missing on UAT", "uat": "No eyebrow above 'The 10 best...', 'Why TeamViewer outperforms...', 'TeamViewer remains one of...', 'Here’s what really matters'", "live": "Blue #3056EF eyebrow ('DO THEY REALLY COMPARE?', 'LET’S TAKE A CLOSER LOOK', 'BOTTOM LINE', 'OVERWHELMED BY OPTIONS?')", "cause": "Eyebrow field not migrated", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {"uat": "screenshots/special-teamviewer-alternative/2-english-uat.png", "live": "screenshots/special-teamviewer-alternative/2-english-live.png"}, "group": "eyebrow", "also": ["special-splashtop-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 3, "component": "Here’s what really matters (icon cards)", "kind": "Content", "issue": "Cards row has an empty first card, so 5 cards wrap to two rows", "uat": "5 cards, first empty, last wraps below; card titles #050A52", "live": "4 cards in one row; titles #141414", "cause": "Empty card item / column variant not mapped", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {"uat": "screenshots/special-teamviewer-alternative/3-english-uat.png", "live": "screenshots/special-teamviewer-alternative/3-english-live.png"}, "group": "", "also": []}, {"id": 4, "component": "Plan cards (TeamViewer Business / Premium / Corporate)", "kind": "Content", "issue": "Plan cards differ: badges, taglines, feature lists and Buy now colour", "uat": "Premium and Corporate badged 'AI-POWERED TASK AUTOMATION', taglines 'Access up to N unattended devices', long feature list with AI credit chips, all Buy now #3056EF", "live": "Only Business badged, taglines 'For individual IT support and work' etc., shorter list, Premium/Corporate Buy now navy #050A52", "cause": "Different product-card version or datasource (possibly dynamic pricing component)", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {"uat": "screenshots/special-teamviewer-alternative/4-english-uat.png", "live": "screenshots/special-teamviewer-alternative/4-english-live.png"}, "group": "", "also": []}, {"id": 5, "component": "Reasons to choose TeamViewer (icon cards)", "kind": "Alignment", "issue": "Card layout differs: width, text alignment and icon size", "uat": "Cards span 64-1376px, text centred, icons 90x90", "live": "Cards 180-1260px, text left-aligned, icons 109x109", "cause": "Card variant / alignment style not mapped", "sev": "Minor", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {"uat": "screenshots/special-teamviewer-alternative/5-english-uat.png", "live": "screenshots/special-teamviewer-alternative/5-english-live.png"}, "group": "", "also": []}, {"id": 6, "component": "Security is at our core", "kind": "Content", "issue": "Trust Center CTA duplicated and certification logo strip missing", "uat": "Two 'Visit our Trust Center' CTAs (/en/resources/trust-center/ and /trust-center), no logo strip", "live": "One CTA (/trust-center) and a scrolling strip of certification logos (ISO 27001, SOC 2, HIPAA...)", "cause": "CTA mapped twice; logo carousel not migrated", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {"uat": "screenshots/special-teamviewer-alternative/6-english-uat.png", "live": "screenshots/special-teamviewer-alternative/6-english-live.png"}, "group": "", "also": []}, {"id": 7, "component": "Integration partners / accordions", "kind": "Colour", "issue": "Card and accordion titles are navy instead of near-black", "uat": "Titles #050A52", "live": "Titles #141414 (integration cards, Why TeamViewer accordions, FAQ accordions)", "cause": "Text colour style differs", "sev": "Minor", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {}, "group": "", "also": []}, {"id": 8, "component": "See what other TeamViewer customers are saying (Tabs)", "kind": "Background", "issue": "Section background is white on UAT, light grey on live", "uat": "White", "live": "Light grey", "cause": "Background style not mapped", "sev": "Minor", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {"uat": "screenshots/special-teamviewer-alternative/8-english-uat.png", "live": "screenshots/special-teamviewer-alternative/8-english-live.png"}, "group": "", "also": []}, {"id": 9, "component": "FAQ: Your questions, answered (closing line and CTA)", "kind": "CTA", "issue": "Closing line is left-aligned and Comparison overview CTA is filled instead of outlined", "uat": "Line left-aligned; CTA filled #050A52 with white text", "live": "Line centred; CTA outlined navy #050A52 with navy text", "cause": "Alignment and button variant not mapped", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {"uat": "screenshots/special-teamviewer-alternative/9-english-uat.png", "live": "screenshots/special-teamviewer-alternative/9-english-live.png"}, "group": "", "also": []}, {"id": 10, "component": "FAQ accordion", "kind": "Accordion", "issue": "Expanding a FAQ item does not update the URL hash on UAT", "uat": "No hash after expanding 'Is TeamViewer still free?'", "live": "#qalist-b970e9d07d-item-4986278783 (breaks deep links)", "cause": "Accordion deep-link not enabled", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL", "TR"], "shots": {}, "group": "faq", "also": ["special-splashtop-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 11, "component": "Experience award-winning software... (Heading)", "kind": "Content", "issue": "Heading is English-only in several locales, truncated to 'and suppor' and has no space above", "uat": "'Experience award-winning software for secure remote access and suppor', flush against FAQ", "live": "'...secure remote access and support' with spacing above; translated per locale", "cause": "Heading typo; English fallback in non-English locales", "sev": "Minor", "rc": "", "langs": ["EN", "ES", "JA", "PT", "CN", "IT", "KO", "NL", "PL"], "shots": {"uat": "screenshots/special-teamviewer-alternative/10-english-uat.png", "live": "screenshots/special-teamviewer-alternative/10-english-live.png"}, "group": "", "also": []}], "not_issues": ["Testimonial carousel slide controls and rotating quotes: rotating content.", "Hero CTA height 54px vs 51px and hero H1/H2 tag: not reported."], "couldnt_check": ["German not compared: UAT page returned empty on capture (load timeout).", "Hungarian, Thai, Russian, Czech, Chinese (Traditional) not compared: live returns 404.", "Anchor links, videos and CTA redirects checked on English only."], "updated": "22 October 2026"}, {"slug": "special-teamviewer-dex-vs-controlup", "label": "DEX vs ControlUp", "title": "TeamViewer DEX vs. ControlUp", "uat": "https://internal.teamviewer.com/en/special/teamviewer-dex-vs-controlup/", "live": "https://www.teamviewer.com/en/special/teamviewer-dex-vs-controlup/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Whole page", "kind": "Source 404", "issue": "Live returns 404 for 7 locales where UAT loads; Thai, Russian and Traditional Chinese UAT content is untranslated", "uat": "200, content shown (TH/RU/TW in English)", "live": "404", "cause": "Locale not published or translated on live", "sev": "Blocker", "rc": "", "langs": ["HU", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/1-hungarian-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/1-hungarian-live.png"}, "group": "loc404", "also": ["special-security-explained", "special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 2, "component": "Why choose... (Hero)", "kind": "Duplicated component", "issue": "German UAT repeats the page blocks (248 blocks vs 7 on live)", "uat": "248 blocks", "live": "7 blocks", "cause": "Components duplicated in DE authoring", "sev": "Blocker", "rc": "", "langs": ["DE"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/9-german-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/9-german-live.png"}, "group": "dedup", "also": ["special-security-explained", "special-teamviewer-dex-vs-lakeside"]}, {"id": 3, "component": "Hero (Why choose TeamViewer DEX over ControlUp)", "kind": "Content / spacing", "issue": "Eyebrow text missing, heading closer to header, CTA border and bottom gap differ", "uat": "no eyebrow, gap below 295px, CTA no border", "live": "eyebrow #3056EF, gap below 404px, CTA border #3056EF", "cause": "Eyebrow field empty; spacing variant", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/2-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/2-english-live.png"}, "group": "eyebrow", "also": ["special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 4, "component": "Comparison table (TeamViewer DEX vs. ControlUp)", "kind": "Image", "issue": "Check and cross icons are broken images on UAT; eyebrow missing; table wider", "uat": "broken check.png/error.png, table 1312px", "live": "icons render, FEATURE COMPARISON eyebrow, table 1096px", "cause": "Icon paths not resolving on UAT", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/3-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/3-english-live.png"}, "group": "table", "also": ["special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 5, "component": "Comparison table CTA", "kind": "CTA", "issue": "Explore all features CTA is a filled button on UAT, text link on live (DE missing on UAT)", "uat": "#FFFFFF on #050A52, 54px, r=8", "live": "#050A52 text link, 48px", "cause": "CTA variant", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/4-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/4-english-live.png"}, "group": "", "also": []}, {"id": 6, "component": "Move from monitoring... (CTA banner)", "kind": "Colour", "issue": "Banner is bright blue with white heading and white button; live is light with navy heading and navy button", "uat": "heading #FFFFFF, button white", "live": "heading #050A52, button #050A52", "cause": "Theme swap", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/5-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/5-english-live.png"}, "group": "banner", "also": ["special-teamviewer-dex-vs-lakeside"]}, {"id": 7, "component": "Don't just detect problems (Basic Text)", "kind": "Layout", "issue": "Heading stacked above full-width text, centred, no gap below; live is two columns with left heading and 108px gap", "uat": "stacked, gap 0px", "live": "two columns, gap 108px", "cause": "Layout variant", "sev": "Minor", "rc": "", "langs": ["EN", "FR", "ES", "JA", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/6-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/6-english-live.png"}, "group": "", "also": []}, {"id": 8, "component": "Where TeamViewer wins (cards)", "kind": "Content / colour", "issue": "Subheading text missing on UAT; card heading #050A52 and larger vs live #141414; icon differs; gap below 0 vs 64px", "uat": "no subheading, heading #050A52", "live": "subheading shown, heading #141414", "cause": "Card variant and subheading empty", "sev": "Minor", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/7-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/7-english-live.png"}, "group": "", "also": []}, {"id": 9, "component": "FAQ (Accordion)", "kind": "Accordion", "issue": "Expanding an item does not update URL hash on UAT; live adds #qalist-...-item-...; answer text colour #474747 vs #545454", "uat": "no hash", "live": "#qalist-8ffe03ce26-item-308b411199 (EN example)", "cause": "Accordion deep-link not enabled", "sev": "Major", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-controlup/8-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-controlup/8-english-live.png"}, "group": "faq", "also": ["special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}, {"id": 10, "component": "Header navigation (main menu)", "kind": "Header", "issue": "DE 'ONE Platform' vs live 'ONE Plattform'; ES 'Enterprise' vs live 'Empresa'", "uat": "ONE Platform / Enterprise", "live": "ONE Plattform / Empresa", "cause": "Untranslated menu labels", "sev": "Major", "rc": "", "langs": ["DE", "ES"], "shots": {}, "group": "nav", "also": ["special-reset-management", "special-sales-upgrade-request", "special-security-explained", "special-teamviewer-dex-vs-lakeside", "special-teamviewer-dex-vs-nexthink"]}], "not_issues": ["Body text colour #2D2D2D vs #545454 accepted."], "couldnt_check": ["Chinese (Simplified): live failed to load during capture, not compared."], "updated": "22 October 2026"}, {"slug": "special-teamviewer-dex-vs-lakeside", "label": "DEX vs Lakeside", "title": "Why choose TeamViewer DEX over Lakeside", "uat": "https://internal.teamviewer.com/en/special/teamviewer-dex-vs-lakeside/", "live": "https://www.teamviewer.com/en/special/teamviewer-dex-vs-lakeside/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Whole page", "kind": "Source 404", "issue": "Live returns 404 for these locales while UAT has the page (Thai, Russian and Traditional Chinese UAT content is also untranslated English)", "uat": "Loads (TH, RU, TW untranslated)", "live": "404", "cause": "Locale version published on UAT only", "sev": "Blocker", "rc": "", "langs": ["HU", "PL", "TH", "RU", "CS", "TW"], "shots": {}, "group": "loc404", "also": ["special-security-explained", "special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-nexthink"]}, {"id": 2, "component": "Frequently asked questions (FAQs) (hu, pl, th, ru, cs, tw)", "kind": "Extra component", "issue": "FAQ with 7 accordion items exists on UAT but not on live (live is 404 in these locales)", "uat": "FAQ with 7 items", "live": "404 page", "cause": "Locale only on UAT", "sev": "Major", "rc": "", "langs": ["HU", "PL", "TH", "RU", "CS", "TW"], "shots": {}, "group": "faqextra", "also": ["special-teamviewer-dex-vs-nexthink"]}, {"id": 3, "component": "Hero (page, German)", "kind": "Duplicated component", "issue": "German UAT page repeats the content blocks about 264 times (live has 7)", "uat": "264 blocks", "live": "7 blocks", "cause": "Duplicated content in the German page tree", "sev": "Blocker", "rc": "", "langs": ["DE"], "shots": {}, "group": "dedup", "also": ["special-security-explained", "special-teamviewer-dex-vs-controlup"]}, {"id": 4, "component": "Hero (Why choose TeamViewer DEX over Lakeside)", "kind": "Content", "issue": "Eyebrow 'TEAMVIEWER DEX VS. LAKESIDE' (#3056EF) is missing on UAT; hero background image is missing, text colour and gap below differ", "uat": "no eyebrow, no background image, gap below 295px", "live": "eyebrow #3056EF, background image, gap below 404px", "cause": "Eyebrow and background not migrated", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-lakeside/1-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-lakeside/1-english-live.png"}, "group": "eyebrow", "also": ["special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-nexthink"]}, {"id": 5, "component": "Turn digital experience insights into immediate action (Text with heading)", "kind": "Alignment", "issue": "Heading is stacked above the body text on UAT, side by side on live; no gap below", "uat": "stacked, gap 0px", "live": "two columns, gap 108px", "cause": "Different layout variant", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-lakeside/2-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-lakeside/2-english-live.png"}, "group": "", "also": []}, {"id": 6, "component": "Move from insight to action with TeamViewer DEX (CTA banner)", "kind": "Background", "issue": "Banner is solid blue with white heading and white CTA on UAT; light blue with navy heading and navy CTA on live", "uat": "bg #3056EF, heading #FFFFFF, CTA #050A52 on #FFFFFF", "live": "light bg, heading #050A52, CTA #FFFFFF on #050A52", "cause": "Theme variant not mapped", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-lakeside/3-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-lakeside/3-english-live.png"}, "group": "banner", "also": ["special-teamviewer-dex-vs-controlup"]}, {"id": 7, "component": "Where TeamViewer wins (cards)", "kind": "Colour", "issue": "Card headings are #050A52 and wrap to two lines on UAT, #141414 on live", "uat": "#050A52", "live": "#141414", "cause": "Different card variant", "sev": "Minor", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-lakeside/5-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-lakeside/5-english-live.png"}, "group": "", "also": []}, {"id": 8, "component": "TeamViewer DEX vs. Lakeside (comparison table)", "kind": "Image", "issue": "Table check/cross images are broken on UAT (check.png, error.png), eyebrow 'FEATURE COMPARISON' missing, CTA is a filled #050A52 button on UAT vs a plain link on live", "uat": "broken check.png / error.png, CTA filled 54px", "live": "icons shown, CTA plain link 48px", "cause": "Table asset paths wrong", "sev": "Major", "rc": "", "langs": ["EN", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-lakeside/4-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-lakeside/4-english-live.png"}, "group": "table", "also": ["special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-nexthink"]}, {"id": 9, "component": "Frequently asked questions (FAQs) accordion", "kind": "URL", "issue": "Opening an FAQ item does not update the URL on UAT; live sets #qalist-...-item-... (deep link)", "uat": "(none)", "live": "#qalist-6df97da66b-item-a4e22c1fed", "cause": "Deep-link hash not enabled", "sev": "Major", "rc": "", "langs": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "IT", "KO", "NL"], "shots": {}, "group": "faq", "also": ["special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-nexthink"]}, {"id": 10, "component": "Header navigation (main menu)", "kind": "Header", "issue": "Menu labels differ: DE 'ONE Platform' vs live 'ONE Plattform'; ES 'Enterprise' vs live 'Empresa'", "uat": "ONE Platform (DE), Enterprise (ES)", "live": "ONE Plattform (DE), Empresa (ES)", "cause": "Untranslated menu labels", "sev": "Major", "rc": "", "langs": ["DE", "ES"], "shots": {}, "group": "nav", "also": ["special-reset-management", "special-sales-upgrade-request", "special-security-explained", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-nexthink"]}], "not_issues": ["FAQ answer text lines show as 'nothing' on live: answers not captured on live."], "couldnt_check": ["Turkish: UAT failed to load, live 404, not compared.", "FAQ answer text per accordion not fully compared."], "updated": "22 October 2026"}, {"slug": "special-teamviewer-dex-vs-nexthink", "label": "DEX vs Nexthink", "title": "Ready to create a digital workplace that just works?", "uat": "https://internal.teamviewer.com/en/special/teamviewer-dex-vs-nexthink/", "live": "https://www.teamviewer.com/en/special/teamviewer-dex-vs-nexthink/", "checked": ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "issues": [{"id": 1, "component": "Whole page", "kind": "Source 404", "issue": "Live returns 404 for these locales while UAT has the page (Korean, Thai, Russian and Traditional Chinese UAT content is also untranslated English)", "uat": "Loads (KO, TH, RU, TW untranslated)", "live": "404", "cause": "Locale versions published on UAT only", "sev": "Blocker", "rc": "", "langs": ["ES", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {}, "group": "loc404", "also": ["special-security-explained", "special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside"]}, {"id": 2, "component": "Frequently asked questions (FAQs)", "kind": "Extra component", "issue": "FAQ with 6 accordion items exists on UAT but not on live (live is 404)", "uat": "FAQ with 6 items", "live": "404 page", "cause": "Locale only on UAT", "sev": "Major", "rc": "", "langs": ["ES", "HU", "IT", "KO", "NL", "PL", "TH", "RU", "CS", "TW", "TR"], "shots": {}, "group": "faqextra", "also": ["special-teamviewer-dex-vs-lakeside"]}, {"id": 3, "component": "Hero (Ready to create a digital workplace that just works?)", "kind": "Content", "issue": "Eyebrow 'TEAMVIEWER DEX VS. NEXTHINK' (#3056EF) and hero background image are missing on UAT; CTA border and gap below differ", "uat": "no eyebrow, gap below 295px, CTA border none", "live": "eyebrow #3056EF, gap 360px, CTA border #3056EF", "cause": "Eyebrow field not migrated", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR", "JA"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-nexthink/1-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-nexthink/1-english-live.png"}, "group": "eyebrow", "also": ["special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside"]}, {"id": 4, "component": "TeamViewer DEX vs Nexthink (comparison table)", "kind": "Image", "issue": "Table check/cross images are broken on UAT; 'FEATURE COMPARISON' eyebrow missing; CTA is a filled button on UAT, plain link on live", "uat": "broken check.png / error.png, CTA #FFFFFF on #050A52 54px", "live": "icon-check-blue / icon-cross-light-blue shown, CTA #050A52 link 48px", "cause": "Table asset paths wrong", "sev": "Major", "rc": "", "langs": ["EN", "DE", "FR", "JA"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-nexthink/2-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-nexthink/2-english-live.png"}, "group": "table", "also": ["special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside"]}, {"id": 5, "component": "Why enterprises choose TeamViewer DEX (cards)", "kind": "Colour", "issue": "Card headings are #050A52 on UAT, #141414 on live", "uat": "#050A52", "live": "#141414", "cause": "Different card variant", "sev": "Minor", "rc": "", "langs": ["EN", "DE", "FR", "JA"], "shots": {"uat": "screenshots/special-teamviewer-dex-vs-nexthink/3-english-uat.png", "live": "screenshots/special-teamviewer-dex-vs-nexthink/3-english-live.png"}, "group": "", "also": []}, {"id": 6, "component": "Frequently asked questions (FAQs) accordion", "kind": "URL", "issue": "Opening an FAQ item does not update the URL on UAT; live sets a #qalist-...-item-... hash", "uat": "(none)", "live": "#qalist-...-item-...", "cause": "Deep-link hash not enabled", "sev": "Major", "rc": "", "langs": ["EN", "DE", "FR", "JA"], "shots": {}, "group": "faq", "also": ["special-splashtop-alternative", "special-teamviewer-alternative", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside"]}, {"id": 7, "component": "Header navigation (main menu)", "kind": "Header", "issue": "Menu labels differ: DE 'ONE Platform' vs live 'ONE Plattform'; ES 'Enterprise' vs live 'Empresa'", "uat": "ONE Platform (DE), Enterprise (ES)", "live": "ONE Plattform (DE), Empresa (ES)", "cause": "Untranslated menu labels", "sev": "Major", "rc": "", "langs": ["DE", "ES"], "shots": {}, "group": "nav", "also": ["special-reset-management", "special-sales-upgrade-request", "special-security-explained", "special-teamviewer-dex-vs-controlup", "special-teamviewer-dex-vs-lakeside"]}], "not_issues": [], "couldnt_check": ["Portuguese: UAT failed to load, live 404, not compared.", "Chinese (Simplified): live failed to load, not compared.", "FAQ answer text not fully compared."], "updated": "22 October 2026"}], "shared": [{"id": "nav", "title": "Menu labels differ from live in DE and ES", "kind": "Header", "fix": "Content", "note": "Main menu labels differ in DE and ES. Update the menu item translations or dictionary entries.", "refs": [["special-reset-management", 4], ["special-sales-upgrade-request", 4], ["special-security-explained", 6], ["special-teamviewer-dex-vs-controlup", 10], ["special-teamviewer-dex-vs-lakeside", 10], ["special-teamviewer-dex-vs-nexthink", 7]]}, {"id": "loc404", "title": "Live returns 404 while UAT loads the page", "kind": "Source 404", "fix": "Content / config", "note": "Locale versions are missing or unpublished on one side. Create or publish the language versions in the CMS, or confirm that live is meant to return 404.", "refs": [["special-security-explained", 1], ["special-splashtop-alternative", 1], ["special-teamviewer-alternative", 1], ["special-teamviewer-dex-vs-controlup", 1], ["special-teamviewer-dex-vs-lakeside", 1], ["special-teamviewer-dex-vs-nexthink", 1]]}, {"id": "eyebrow", "title": "Eyebrow label above the heading is missing on UAT", "kind": "Content", "fix": "Component", "note": "The eyebrow field is not rendered on UAT. Check the rendering variant of the hero / text component and that the datasource field was migrated.", "refs": [["special-splashtop-alternative", 3], ["special-teamviewer-alternative", 2], ["special-teamviewer-dex-vs-controlup", 3], ["special-teamviewer-dex-vs-lakeside", 4], ["special-teamviewer-dex-vs-nexthink", 3]]}, {"id": "faq", "title": "Expanding an accordion / FAQ item sets no URL hash on UAT (live deep-links)", "kind": "Accordion", "fix": "Component", "note": "The shared accordion does not write the opened item to the URL hash. Fix it once in the accordion component.", "refs": [["special-splashtop-alternative", 8], ["special-teamviewer-alternative", 10], ["special-teamviewer-dex-vs-controlup", 9], ["special-teamviewer-dex-vs-lakeside", 9], ["special-teamviewer-dex-vs-nexthink", 6]]}, {"id": "heroimg", "title": "Hero image differs from live (corners, size or asset)", "kind": "Image", "fix": "Component", "note": "Hero image corners, size or asset differ. Check the hero component styling and its media item.", "refs": [["special-request-callback", 1], ["special-sales-upgrade-request", 2], ["special-security-explained", 3]]}, {"id": "dedup", "title": "German UAT repeats the page blocks many times", "kind": "Duplicated component", "fix": "Template", "note": "German pages render the same blocks several times. Check the DE layout, placeholder settings and datasource inheritance.", "refs": [["special-security-explained", 2], ["special-teamviewer-dex-vs-controlup", 2], ["special-teamviewer-dex-vs-lakeside", 3]]}, {"id": "table", "title": "Comparison table check/cross icons are broken images on UAT", "kind": "Image", "fix": "Content / media", "note": "Comparison-table check and cross icons point to media that is missing on UAT. Re-link or publish the media items.", "refs": [["special-teamviewer-dex-vs-controlup", 4], ["special-teamviewer-dex-vs-lakeside", 8], ["special-teamviewer-dex-vs-nexthink", 4]]}, {"id": "banner", "title": "CTA banner is bright blue with white text on UAT; live is light with navy text", "kind": "Colour", "fix": "Component", "note": "The CTA banner theme variant differs (bright blue with white text on UAT). Set the light theme in the shared CTA banner component.", "refs": [["special-teamviewer-dex-vs-controlup", 6], ["special-teamviewer-dex-vs-lakeside", 6]]}, {"id": "faqextra", "title": "FAQ exists on UAT in locales where live is 404", "kind": "Extra component", "fix": "Config", "note": "The FAQ shows on UAT in locales that live does not publish. Resolves together with the locale 404s.", "refs": [["special-teamviewer-dex-vs-lakeside", 2], ["special-teamviewer-dex-vs-nexthink", 2]]}]}</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("data").textContent);
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const codes = D.locales.map((l) => l[0]), names = Object.fromEntries(D.locales);
+const bySlug = Object.fromEntries(D.pages.map((p) => [p.slug, p]));
+
+const SEVS = ["Blocker", "Major", "Minor"], SR = { Blocker: 0, Major: 1, Minor: 2 }, SW = [1000, 10, 1];
+const STS = ["Open", "In progress", "Fixed", "Won't fix"], SC = { "Open": "open", "In progress": "prog", "Fixed": "fixed", "Won't fix": "wont" };
+const RC = { new: "New at re-check", regressed: "Came back", fixed: "Gone at re-check" };
+const key = (s, id) => s + "_" + id;
+D.pages.forEach((p) => p.issues.forEach((i) => { i.slug = p.slug; i.key = key(p.slug, i.id); }));
+const all = D.pages.flatMap((p) => p.issues);
+const byKey = Object.fromEntries(all.map((i) => [i.key, i]));
+const gOf = {};
+D.shared.forEach((g) => g.refs.forEach(([s, id]) => { gOf[key(s, id)] = g.id; }));
+
+// shared state, kept in the db capability
+const T = { issues: {}, groups: {}, rechecks: {} };
+const NM = {};
+let db = null, me = { id: null, name: "" }, dis = " disabled", loaded = false;
+const st = (o) => (o && o.status) || "Open";
+const sevOf = (i) => (T.issues[i.key] && T.issues[i.key].sev) || i.sev;
+const done = (s) => s === "Fixed" || s === "Won't fix";
+const mineOf = (o) => !!o && ((me.id && o.ownerId === me.id) || (me.name && o.owner && String(o.owner).trim().toLowerCase() === me.name.toLowerCase()));
+const isMine = (i) => mineOf(T.issues[i.key]) || (gOf[i.key] && mineOf(T.groups[gOf[i.key]]));
+const fmt = (t) => { try { return new Date(t).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch (e) { return ""; } };
+const cnt = (list) => { const c = { "Open": 0, "In progress": 0, "Fixed": 0, "Won't fix": 0 }; list.forEach((i) => { c[st(T.issues[i.key])]++; }); return c; };
+const pct = (n, t) => t ? (100 * n / t).toFixed(1) : 0;
+const bar = (c, n) => `<div class="bar" role="img" aria-label="${c.Fixed} of ${n} fixed"><i class="f" style="width:${pct(c.Fixed, n)}%"></i><i class="p" style="width:${pct(c["In progress"], n)}%"></i><i class="w" style="width:${pct(c["Won't fix"], n)}%"></i></div>`;
+
+$("#heading").textContent = D.heading;
+$("#intro").textContent = D.intro;
+const langsHit = new Set(all.flatMap((i) => i.langs));
+const kindsAll = [...new Set([...all.map((i) => i.kind), "Source 404", "Target 404"])].sort();
+const selKinds = new Set(kindsAll);
+const issueOf = (s, id) => bySlug[s].issues.find((x) => x.id === id);
+const cls = (n) => n === 0 ? "" : n === 1 ? "h1" : n <= 3 ? "h2" : n <= 6 ? "h3" : "h4";
+
+// filters: type, status, severity, mine
+function passState(i) {
+  const fs = $("#fStatus").value, fv = $("#fSev").value, s = st(T.issues[i.key]);
+  if (fs === "todo" ? done(s) : (fs && s !== fs)) return false;
+  if (fv && sevOf(i) !== fv) return false;
+  if ($("#fMine").checked && !isMine(i)) return false;
+  return true;
+}
+const stateFiltered = () => !!($("#fStatus").value || $("#fSev").value || $("#fMine").checked);
+const kindOn = (i) => selKinds.has(i.kind) && passState(i);
+const kindsFiltered = () => selKinds.size !== kindsAll.length || stateFiltered();
+
+// the work strip under an issue or a shared group
+function workHtml(coll, k, group, applyN) {
+  const d = T[coll][k] || {}, s = st(d), i = group ? null : byKey[k];
+  return `<div class="work" data-coll="${coll}" data-key="${esc(k)}">
+    <select class="st" aria-label="Status"${dis}>${STS.map((x) => `<option${s === x ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
+    ${group ? "" : `<select class="sv" aria-label="Severity"${dis}>${SEVS.map((x) => `<option${(d.sev || i.sev) === x ? " selected" : ""}>${x}</option>`).join("")}</select>`}
+    <input type="text" class="ow" list="owners" placeholder="Assignee" aria-label="Assignee" value="${esc(d.owner || "")}"${dis}>
+    <button type="button" class="me"${dis}>Assign to me</button>
+    ${group ? `<button type="button" class="apply" data-gid="${esc(k)}"${dis}>Apply to all ${applyN} issues</button>` : ""}
+    <textarea class="nt" rows="2" placeholder="Notes: what changed, ticket link, what is blocking" aria-label="Notes"${dis}>${esc(d.notes || "")}</textarea>
+    <span class="by"></span></div>`;
+}
+function syncWork(w) {
+  const coll = w.dataset.coll, k = w.dataset.key, d = T[coll][k] || {}, s = st(d);
+  const set = (sel, v) => { const el = w.querySelector(sel); if (el && el !== document.activeElement && el.value !== v) el.value = v; };
+  set(".st", s); set(".ow", d.owner || ""); set(".nt", d.notes || "");
+  const art = w.closest(".issue");
+  if (art) {
+    const i = byKey[k], sev = d.sev || i.sev;
+    set(".sv", sev);
+    art.className = "issue s-" + SC[s];
+    const chip = art.querySelector(".sev"); chip.className = "sev " + sev; chip.textContent = sev;
+  }
+  const by = w.querySelector(".by");
+  by.textContent = [d.flag, d.updatedAt ? `Updated ${fmt(d.updatedAt)}${d.by ? " by " + (NM[d.by] || "a teammate") : ""}` : ""].filter(Boolean).join(" · ");
+}
+
+function renderProgress() {
+  const n = all.length, c = cnt(all);
+  const blk = all.filter((i) => sevOf(i) === "Blocker" && !done(st(T.issues[i.key]))).length;
+  const wait = Object.values(T.rechecks).filter((d) => d && d.state === "requested").length;
+  $("#progress").innerHTML = `${bar(c, n)}<div class="plabel"><span><b>${c.Fixed} of ${n}</b> fixed</span><span><b>${c["In progress"]}</b> in progress</span><span><b>${c["Won't fix"]}</b> won't fix</span><span><b>${c.Open}</b> open</span><span><b>${blk}</b> blockers not done</span>
+    <button type="button" class="ghost" data-recheck="*"${dis} title="Asks whoever runs the QA skill to compare the pages again">${wait ? `Re-check requested for ${wait} page${wait === 1 ? "" : "s"}` : "Request re-check of all pages"}</button></div>`;
+}
+function rcFill(el) {
+  const d = T.rechecks[el.dataset.slug];
+  const req = d && d.state === "requested";
+  el.innerHTML = `<button type="button" class="ghost" data-recheck="${esc(el.dataset.slug)}"${dis}${req ? " disabled" : ""}>${req ? "Re-check requested" : "Request re-check"}</button>`
+    + (req ? `<span>Asked ${esc(fmt(d.updatedAt))}. It runs the next time someone runs the QA skill.</span>` : d && d.state === "done" ? `<span>Last re-checked ${esc(fmt(d.updatedAt))}${d.summary ? ": " + esc(d.summary) : ""}</span>` : "");
+}
+
+function renderSummary() {
+  const kf = kindsFiltered();
+  const pg = D.pages.map((p) => ({ p, is: p.issues.filter(kindOn) })).filter((x) => !kf || x.is.length);
+  const vis = pg.flatMap((x) => x.is);
+  const lh = new Set(vis.flatMap((i) => i.langs));
+  const refsOf = (g) => g.refs.filter(([s, id]) => { const i = issueOf(s, id); return i && kindOn(i); });
+  const sh = D.shared.map((g) => ({ g, refs: refsOf(g) })).filter((x) => x.refs.length);
+  const openBlk = vis.filter((i) => sevOf(i) === "Blocker" && !done(st(T.issues[i.key]))).length;
+  $("#stats").innerHTML = [[vis.length, "issues"], [openBlk, "open blockers"], [pg.length, "pages"], [lh.size + " / 17", "locales affected"], [sh.length, "fix-once groups"]]
+    .map(([n, t]) => `<div class="stat"><b>${n}</b><span>${t}</span></div>`).join("");
+  renderProgress();
+  let h = `<thead><tr><th></th>${codes.map((c) => `<th title="${esc(names[c])}">${c}</th>`).join("")}<th>All</th><th>Fixed</th></tr></thead><tbody>`;
+  for (const { p, is } of pg) {
+    h += `<tr><th class="row"><button data-go="${esc(p.slug)}">${esc(p.label)}</button></th>`;
+    for (const c of codes) {
+      if (!p.checked.includes(c)) { h += `<td class="na" title="${esc(names[c])}: not checked"></td>`; continue; }
+      const n = is.filter((i) => i.langs.includes(c) && i.rc !== "fixed").length;
+      h += `<td class="${cls(n)}" title="${esc(p.label)}, ${esc(names[c])}: ${n} issue${n === 1 ? "" : "s"}">${n || "·"}</td>`;
+    }
+    const pc = cnt(p.issues);
+    h += `<td class="tot">${is.filter((i) => i.rc !== "fixed").length}</td><td class="fx">${pc.Fixed}/${p.issues.length}${bar(pc, p.issues.length)}</td></tr>`;
+  }
+  $("#heat").innerHTML = h + "</tbody>";
+  $("#sharedPanel").hidden = !sh.length;
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#shared")) return;
+  sh.sort((a, b) => topSev(a.g) - topSev(b.g) || new Set(b.refs.map((r) => r[0])).size - new Set(a.refs.map((r) => r[0])).size);
+  $("#shared").innerHTML = sh.map(({ g, refs }) => {
+    const pages = [...new Set(refs.map((r) => r[0]))], top = SEVS[topSev(g)];
+    const gc = cnt(g.refs.map(([s, id]) => issueOf(s, id)).filter(Boolean));
+    return `<div class="row"><div class="count">${pages.length}<small>pages</small></div>
+    <div style="min-width:0;display:grid;gap:6px"><h3>${esc(g.title)}</h3>
+      <p class="fixline"><span class="fix">Fix in: ${esc(g.fix)}</span>${esc(g.note)}</p>
+      <div class="refs">${refs.map(([s, id]) => `<button data-go="${esc(s)}" data-id="${id}">${esc(bySlug[s].label)} #${id}</button>`).join(" · ")}</div>
+      <span class="gp">${gc.Fixed} of ${g.refs.length} issues fixed</span></div>
+    <div class="chips"><span class="sev ${top}">${top}</span><span class="kind">${esc(g.kind)}</span></div>
+    ${workHtml("groups", g.id, true, g.refs.length)}</div>`;
+  }).join("");
+  $("#shared").querySelectorAll(".work").forEach(syncWork);
+}
+function topSev(g) { return Math.min(...g.refs.map(([s, id]) => { const i = issueOf(s, id); return i ? SR[sevOf(i)] : 2; })); }
+if (D.heat_note) $("#heatNote").textContent = D.heat_note; else $("#heatNote").hidden = true;
+
+// issue-type multi-select
+const kCount = Object.fromEntries(kindsAll.map((k) => [k, all.filter((i) => i.kind === k).length]));
+$("#kList").innerHTML = kindsAll.map((k) => `<label><input type="checkbox" value="${esc(k)}" checked>${esc(k)}<small>${kCount[k]}</small></label>`).join("");
+function syncKinds() {
+  for (const cb of document.querySelectorAll("#kList input")) cb.checked = selKinds.has(cb.value);
+  $("#kindSum").textContent = selKinds.size === kindsAll.length ? "All types" : selKinds.size === 0 ? "No types selected" : selKinds.size === 1 ? [...selKinds][0] : `${selKinds.size} types selected`;
+}
+function setKinds(on) { selKinds.clear(); if (on) kindsAll.forEach((k) => selKinds.add(k)); syncKinds(); }
+$("#kList").onchange = (e) => { e.target.checked ? selKinds.add(e.target.value) : selKinds.delete(e.target.value); syncKinds(); render(); };
+$("#kAll").onclick = () => { setKinds(true); render(); };
+$("#kNone").onclick = () => { setKinds(false); render(); };
+document.addEventListener("click", (e) => { const dd = $("#kindDD"); if (dd.open && !dd.contains(e.target)) dd.open = false; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#kindDD").open = false; });
+
+// filter controls
+const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+$("#fPage").innerHTML = opt("", "All pages") + D.pages.map((p) => opt(p.slug, p.label)).join("");
+$("#fLang").innerHTML = opt("", "All locales") + D.locales.filter(([c]) => langsHit.has(c)).map(([c, n]) => opt(c, `${c} · ${n}`)).join("");
+$("#fStatus").innerHTML = opt("", "All statuses") + opt("todo", "Not done (open + in progress)") + STS.map((s) => opt(s, s)).join("");
+$("#fSev").innerHTML = opt("", "All severities") + SEVS.map((s) => opt(s, s)).join("");
+$("#fSort").innerHTML = opt("sev", "Sort: severity first") + opt("orig", "Sort: original order");
+const FILTERS = ["fPage", "fLang", "fStatus", "fSev", "fSort"];
+try {
+  const s = JSON.parse(localStorage.getItem("qa-filters") || "{}");
+  for (const k of FILTERS) if (s[k] && [...$("#" + k).options].some((o) => o.value === s[k])) $("#" + k).value = s[k];
+  $("#fMine").checked = !!s.mine;
+  if (Array.isArray(s.kinds)) { selKinds.clear(); s.kinds.forEach((k) => kindsAll.includes(k) && selKinds.add(k)); }
+} catch (e) {}
+syncKinds();
+
+const SEG = { CN: "cn", TW: "tw" };
+const localeUrl = (url, c) => url.replace(/^(https?:\/\/[^/]+)\/[a-z]{2}(?=\/|$)/i, `$1/${SEG[c] || c.toLowerCase()}`);
+function issueHtml(p, i) {
+  const shot = (side, label) => i.shots[side] ? `<figure><figcaption style="color:var(--${side})">${label}</figcaption><img loading="lazy" src="${esc(i.shots[side])}" alt="${label} screenshot for issue ${i.id}"></figure>` : "";
+  const shots = shot("uat", "UAT") + shot("live", "Live");
+  const d = T.issues[i.key], sev = (d && d.sev) || i.sev;
+  return `<article class="issue s-${SC[st(d)]}" id="${esc(p.slug)}-${i.id}"><span class="num">#${i.id}</span><div class="body">
+    <div class="meta"><span class="sev ${sev}">${sev}</span>${RC[i.rc] ? `<span class="rcc ${i.rc}">${RC[i.rc]}</span>` : ""}<span class="kind ${esc(i.kind)}">${esc(i.kind)}</span><span>${esc(i.component)}</span></div>
+    <h3>${esc(i.issue)}</h3>
+    <div class="vals"><div><span class="k u">UAT</span>${esc(i.uat)}</div><div><span class="k l">Live</span>${esc(i.live)}</div></div>
+    <div class="langs">${codes.filter((c) => p.checked.includes(c)).map((c) => i.langs.includes(c)
+      ? `<a class="lang on" href="${esc(localeUrl(p.uat, c))}" target="_blank" rel="noopener" title="${esc(names[c])}: open UAT page">${c}</a>`
+      : `<span class="lang off" aria-disabled="true" title="${esc(names[c])}: no issue">${c}</span>`).join("")}</div>
+    ${i.cause ? `<p class="cause">Likely cause: ${esc(i.cause)}</p>` : ""}
+    ${i.also.length ? `<p class="also">Also on ${i.also.map((s) => `<button data-go="${esc(s)}">${esc(bySlug[s].label)}</button>`).join(", ")}</p>` : ""}
+    ${workHtml("issues", i.key, false)}
+    ${shots ? `<div class="shots">${shots}</div>` : `<p class="noshot">No screenshot for this issue.</p>`}
+  </div></article>`;
+}
+function render() {
+  const fp = $("#fPage").value, fl = $("#fLang").value, ft = $("#fText").value.trim().toLowerCase(), bySev = $("#fSort").value !== "orig";
+  try { localStorage.setItem("qa-filters", JSON.stringify({ fPage: fp, fLang: fl, fStatus: $("#fStatus").value, fSev: $("#fSev").value, fSort: $("#fSort").value, mine: $("#fMine").checked, kinds: [...selKinds] })); } catch (e) {}
+  let shown = 0; const blocks = [];
+  for (const p of D.pages) {
+    if (fp && p.slug !== fp) continue;
+    const list = p.issues.filter((i) => (!fl || i.langs.includes(fl)) && kindOn(i)
+      && (!ft || [i.issue, i.component, i.uat, i.live, i.cause].join(" ").toLowerCase().includes(ft)));
+    shown += list.length;
+    if (!list.length && (fl || ft || kindsFiltered())) continue;
+    if (bySev) list.sort((a, b) => SR[sevOf(a)] - SR[sevOf(b)] || a.id - b.id);
+    const w = list.reduce((n, i) => n + (done(st(T.issues[i.key])) ? 0 : SW[SR[sevOf(i)]]), 0);
+    const pc = cnt(p.issues);
+    blocks.push({ w, html: `<section class="page" id="${esc(p.slug)}"><div class="page-head"><span class="eyebrow">${p.issues.length} issue${p.issues.length === 1 ? "" : "s"} · ${pc.Fixed} fixed · ${p.checked.length} locale${p.checked.length === 1 ? "" : "s"} checked${p.updated ? " · " + esc(p.updated) : ""}</span>
+      <h2>${esc(p.label)}</h2>${p.label !== p.title ? `<p class="note">${esc(p.title)}</p>` : ""}
+      <div class="urls"><span><span class="u">UAT</span> <a href="${esc(p.uat)}" target="_blank" rel="noopener">${esc(p.uat)}</a></span><span><span class="l">Live</span> <a href="${esc(p.live)}" target="_blank" rel="noopener">${esc(p.live)}</a></span></div>
+      <div class="rc" data-slug="${esc(p.slug)}"></div></div>
+      ${list.map((i) => issueHtml(p, i)).join("") || `<p class="empty">No issues found on this page.</p>`}
+      ${p.not_issues.length ? `<details><summary>Possibly not an issue (${p.not_issues.length})</summary><ul>${p.not_issues.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+      ${p.couldnt_check.length ? `<details><summary>Couldn't check (${p.couldnt_check.length})</summary><ul>${p.couldnt_check.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
+    </section>` });
+  }
+  if (bySev) blocks.sort((a, b) => b.w - a.w);
+  $("#pages").innerHTML = blocks.map((b) => b.html).join("") || `<p class="empty">No issues match these filters.</p>`;
+  $("#pages").querySelectorAll(".work").forEach(syncWork);
+  $("#pages").querySelectorAll(".rc").forEach(rcFill);
+  renderSummary();
+  fillOwners();
+  $("#shown").textContent = `${shown} of ${all.length} issues`;
+}
+function fillOwners() {
+  const o = new Set(); for (const c of [T.issues, T.groups]) for (const d of Object.values(c)) if (d && d.owner) o.add(d.owner);
+  if (me.name) o.add(me.name);
+  $("#owners").innerHTML = [...o].sort().map((n) => `<option value="${esc(n)}">`).join("");
+}
+// shared-state changes patch the page in place, so nothing a person is typing is lost
+function patch() {
+  document.querySelectorAll(".work").forEach(syncWork);
+  document.querySelectorAll(".rc").forEach(rcFill);
+  renderSummary(); fillOwners();
+}
+let patchT = 0;
+const patchSoon = () => { cancelAnimationFrame(patchT); patchT = requestAnimationFrame(patch); };
+document.addEventListener("focusout", () => setTimeout(() => { if (!document.activeElement || !document.activeElement.closest(".work")) patchSoon(); }, 0));
+
+let toastT = 0;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3500); }
+
+const chain = {};
+function save(coll, k, patchBody) {
+  if (!db) { toast("Changes can't be saved in this view."); return; }
+  const cur = T[coll][k];
+  if (cur && Object.keys(patchBody).every((f) => (cur[f] ?? null) === (patchBody[f] ?? null))) return;
+  const body = { ...patchBody, updatedAt: new Date().toISOString(), by: me.id || null };
+  T[coll][k] = { ...(cur || {}), ...body };
+  const ref = db.collection(coll).doc(k), had = !!cur;
+  chain[coll + k] = (chain[coll + k] || Promise.resolve())
+    .then(() => had ? ref.update(body) : ref.set(T[coll][k]))
+    .catch(async () => { try { await ref.set(T[coll][k]); } catch (e) { toast("Couldn't save that change. " + ((e && e.message) || "Try again.")); } });
+  patchSoon();
+}
+const noteT = {};
+document.addEventListener("input", (e) => {
+  if (!e.target.matches(".nt")) return;
+  const w = e.target.closest(".work"), id = w.dataset.coll + w.dataset.key, v = e.target.value;
+  clearTimeout(noteT[id]); noteT[id] = setTimeout(() => save(w.dataset.coll, w.dataset.key, { notes: v }), 800);
+});
+document.addEventListener("change", (e) => {
+  const w = e.target.closest(".work"); if (!w) return;
+  const coll = w.dataset.coll, k = w.dataset.key, t = e.target;
+  if (t.matches(".st")) save(coll, k, { status: t.value });
+  else if (t.matches(".sv")) save(coll, k, { sev: t.value });
+  else if (t.matches(".ow")) { const v = t.value.trim(); save(coll, k, { owner: v, ownerId: v && me.name && v.toLowerCase() === me.name.toLowerCase() ? me.id : null }); }
+  else if (t.matches(".nt")) { clearTimeout(noteT[coll + k]); save(coll, k, { notes: t.value }); }
+});
+function applyGroup(gid) {
+  const g = D.shared.find((x) => x.id === gid), d = T.groups[gid] || {};
+  for (const [s, id] of g.refs) {
+    const b = { status: st(d) };
+    if (d.owner) { b.owner = d.owner; b.ownerId = d.ownerId || null; }
+    save("issues", key(s, id), b);
+  }
+  toast(`Applied ${st(d)}${d.owner ? " and " + d.owner : ""} to ${g.refs.length} issues.`);
+}
+
+for (const id of ["fPage", "fLang", "fStatus", "fSev", "fSort", "fMine"]) $("#" + id).onchange = render;
+$("#fText").oninput = render;
+render();
+
+document.addEventListener("click", (e) => {
+  const rc = e.target.closest("[data-recheck]");
+  if (rc) {
+    const slugs = rc.dataset.recheck === "*" ? D.pages.map((p) => p.slug) : [rc.dataset.recheck];
+    slugs.forEach((s) => save("rechecks", s, { state: "requested" }));
+    toast(slugs.length > 1 ? "Re-check requested for all pages." : "Re-check requested."); return;
+  }
+  const mine = e.target.closest(".me");
+  if (mine) { const w = mine.closest(".work"); save(w.dataset.coll, w.dataset.key, { owner: me.name || "Me", ownerId: me.id || null }); return; }
+  const ap = e.target.closest(".apply");
+  if (ap) { applyGroup(ap.dataset.gid); return; }
+  const go = e.target.closest("[data-go]");
+  if (go) {
+    for (const id of ["fPage", "fLang", "fStatus", "fSev"]) $("#" + id).value = "";
+    $("#fMine").checked = false; setKinds(true); $("#fText").value = ""; render();
+    const el = document.getElementById(go.dataset.id ? `${go.dataset.go}-${go.dataset.id}` : go.dataset.go);
+    if (el) el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    return;
+  }
+  const img = e.target.closest(".shots img");
+  if (img) { $("#lightbox img").src = img.src; $("#lightbox img").alt = img.alt; $("#lightbox").classList.add("open"); return; }
+  if (e.target.closest("#lightbox")) $("#lightbox").classList.remove("open");
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#lightbox").classList.remove("open"); });
+$("#foot").textContent = `Built ${D.built} from the UAT vs live comparison reports. Status, assignee and notes are shared with everyone who opens this page.`;
+if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
+
+// connect to the shared store; the page works read-only without it
+const use = async (n) => { try { return window.claude && window.claude.use ? await window.claude.use(n) : null; } catch (e) { return null; } };
+async function resolveNames() {
+  const user = await use("user"); if (!user) return;
+  const ids = new Set(); for (const c of Object.values(T)) for (const d of Object.values(c)) if (d && d.by) ids.add(d.by);
+  if (!ids.size) return;
+  try { const ps = await user.profiles([...ids]); for (const id of ids) NM[id] = (ps[id] && ps[id].name) || ""; } catch (e) { return; }
+  document.querySelectorAll(".work").forEach(syncWork);
+}
+async function connect() {
+  const note = (m) => { $("#dbNote").textContent = m; $("#dbNote").hidden = false; };
+  let writable = true;
+  const user = await use("user");
+  if (user) {
+    try { const v = await user.me(); me = { id: v.id || null, name: v.name || "" }; } catch (e) {}
+    try { writable = (await user.can("data.write")) !== false; } catch (e) {}
+  }
+  db = await use("db");
+  if (!db) { note("Status and notes can't be saved in this view. Open the page from your claude.ai account to track fixes."); dis = " disabled"; loaded = true; render(); return; }
+  if (!writable) note("You have view-only access, so you can see status and notes but not change them.");
+  dis = writable ? "" : " disabled";
+  let first = 0;
+  const arrived = () => { if (++first === 3 && !loaded) { loaded = true; render(); } };
+  const flip = setTimeout(() => { if (!loaded) { loaded = true; render(); } }, 5000);
+  for (const coll of ["issues", "groups", "rechecks"]) {
+    let got = false;
+    db.collection(coll).onSnapshot((snap) => {
+      T[coll] = {}; snap.docs.forEach((d) => { T[coll][d.id] = d.data(); });
+      if (!got) { got = true; arrived(); } else if (loaded) patchSoon();
+      if (loaded && first >= 3) { patchSoon(); resolveNames(); }
+    }, () => { if (!got) { got = true; arrived(); } note("Live updates stopped. Reload the page to reconnect."); });
+  }
+  clearTimeout(flip);
+  setTimeout(() => { if (!loaded) { loaded = true; render(); } }, 5000);
+  resolveNames();
+}
+connect();
+</script>

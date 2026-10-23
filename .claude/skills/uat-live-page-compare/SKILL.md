@@ -1,0 +1,275 @@
+---
+name: uat-live-page-compare
+description: Compare UAT/staging/internal pages against their live counterparts in all 17 site locales (EN, DE, FR, ES, JA, PT, CN, HU, IT, KO, NL, PL, TH, RU, CS, TW, TR) and log every difference in UI (spacing between components, text colour, CTA colour and style, alignment, images, icons, borders, backgrounds) and content (missing, extra or duplicated components, text, links, every tab and accordion item opened including the URL query/hash they set, untranslated or missing language versions), excluding header and footer apart from the top-right header CTAs. Built for volume - one page or thousands - with parallel capture, parallel analysis agents, a live progress bar, issues grouped across languages and pages, Markdown reports and a Confluence page per UAT page. Use this whenever someone pastes a UAT or internal URL together with a live URL, pastes or attaches a list of URL pairs, asks to "compare UAT with live", "check this page against production", "find the UAT issues", "do the visual QA", "check the migration for these pages", "is UAT matching live", or wants findings for a UAT issues log or Confluence, even if they only paste two links with no instruction. Also use for Sitecore / XM Cloud / headless migration QA where pages are checked against the old site.
+---
+
+# UAT vs live page comparison (batch, parallel)
+
+You are the **orchestrator**. Scripts do the mechanical work (open pages,
+measure, pre-compare, screenshot, render reports); **worker agents** running
+in parallel do the judgement (confirm each difference on screen, group,
+write findings); you keep the progress bar, the common-issues roll-up and
+Confluence up to date.
+
+Pages are opened with **Playwright** in the installed Chrome. Never use the
+Claude in Chrome tools. Run every script from the project folder with
+`py -3.13` (Windows; `python` elsewhere): the scripts write `work/` and
+`reports/` under the current folder. Scripts live in the `scripts/` folder
+next to this SKILL.md; `S/` below means that folder's absolute path, and
+`R/` the `references/` folder beside it.
+
+```
+work/_progress.json        registry: every page, its status, issue count, Confluence URL
+work/_confluence.json      where Confluence output goes (written in Step 1)
+work/<slug>/plan.json      the 17 locale URLs on each side
+work/<slug>/<code>-uat.json|.txt, <code>-live.json|.txt   snapshots
+work/<slug>/en-uat-01.jpg …  full-page slices (EN only by default)
+work/<slug>/diff.md        machine leads, grouped across locales
+work/<slug>/findings.json  confirmed issues (written by the worker)
+reports/<slug>.md          the report (newest dated section on top)
+reports/_common-issues.md  issues that recur across pages
+reports/screenshots/<slug>/  annotated UAT + live image per issue
+```
+
+No Excel. Markdown and Confluence only.
+
+## Step 0: Prerequisites (once per machine, not per task)
+
+If memory says the prerequisites were verified, skip this step. Otherwise run
+`py -3.13 S/check_prereqs.py`, and check Confluence with
+`atlassianUserInfo`. If everything passes, save a memory saying so (date,
+versions) so later tasks skip this. If something fails, tell the user exactly
+what to install (`pip install playwright pillow`; the installed Chrome is
+used, no browser download) and stop.
+
+## Step 1: Ask where Confluence output goes (once per run)
+
+Before starting, **ask the user for the Confluence page to write issues
+under** unless `work/_confluence.json` already names one for this run, or the
+user said "no Confluence". One question, e.g. "Which Confluence page should
+I put the results under? Paste its URL (or say 'skip')."
+
+The Confluence tools come from the Atlassian connector; if they are listed
+only as deferred tools, load them with `ToolSearch` first. With the URL:
+1. cloudId: pass the site hostname (e.g. `<site>.atlassian.net`) as
+   `cloudId`; if that fails, `getAccessibleAtlassianResources` once.
+2. Page id: the number after `/pages/` in the URL (or the code after `/x/`
+   for a tiny link). `getConfluencePage` (cloudId, pageId) to confirm it
+   exists and read its `spaceId`.
+3. `getContentFormatGuide` once each with toolName `createConfluencePage` and
+   `updateConfluencePage`, and follow its HTML guidance.
+4. `createConfluencePage` (cloudId, spaceId, `parentId` = the user's page id,
+   title "UAT vs live: progress and common issues", contentFormat `html`,
+   body a one-line placeholder). This is the **index page**; never overwrite
+   the user's own page.
+5. Write `work/_confluence.json`:
+   `{"cloudId", "spaceId", "parentId", "parentUrl", "indexId", "indexUrl"}`.
+
+The connector has no attachment upload, so the annotated screenshots stay in
+`reports/screenshots/<slug>/`; each Confluence page lists their file names.
+Each finished UAT page gets its own child page under the user's page (the
+worker creates it), and the index page is refreshed as pages finish.
+
+## Step 2: Plan
+
+Put the user's pages in `work/pairs.txt`, one per line: `<UAT URL> <live URL>`
+(if they gave a file or a pasted list, convert it; if they gave only UAT URLs,
+derive live by swapping the host and say so). Then:
+
+```
+py -3.13 S/batch.py plan work/pairs.txt
+```
+
+It reads each live page's hreflang links (in parallel), picks the main
+version of each of the 17 languages (e.g. `/en/` not `/en-mea/`, `/latam/`
+only when there is no `/es/`), builds the internal URL on the same path
+(live `/ru-cis/` → internal `/ru/`), guesses unlisted locales from the site's
+segment pattern (flagged "Listed on live: NO", still checked), and registers
+every page as `pending`. Pages already in the registry are skipped, so the
+same file can be re-run to add pages. Pass `--locales EN,DE` only if the user
+asked for fewer languages.
+
+Slugs are the live path without the locale, joined with `-`
+(`/en/products/remote/` → `products-remote`), reusing an existing
+`reports/<last-segment>.md` if that is what earlier runs used.
+
+## Step 3: Capture (background, parallel)
+
+```
+py -3.13 S/batch.py capture --concurrency 12
+```
+
+Run it **in the background**. One headless Chrome, 12 tabs; ~2 s per page
+load, so ~70 s per page for 34 loads. For hundreds of pages start 2-3
+processes at once with `--shard 1/3`, `--shard 2/3`, `--shard 3/3` (watch CPU;
+drop concurrency if pages start timing out). For each locale it saves a
+snapshot (colours, alignment, gaps, CTAs, images, tabs, text per h1/h2
+section; every tab is clicked and every accordion item expanded so their
+content is captured and compared too, along with the URL query/hash each
+click leaves, then the page is put back in its load state; plus the
+main navigation's top-right CTA) and, for EN, full-page slices; when a page's last locale is in, it
+runs `diff.py`, which writes `diff.md` and marks the page `captured`. Workers
+can start on captured pages while capture continues.
+
+A `LOGIN NEEDED <slug>` line (status `login`): stop launching work for those
+pages and ask the user to log in. Run `py -3.13 S/browse.py --login <URL>` in
+the background; a visible Chrome opens, the user logs in and closes it, and
+the cookies are saved to `.playwright-profile/state.json` for every later
+run. Then re-run capture (it picks up `pending` and `login` pages). Never
+type credentials.
+
+## Step 4: Analyse with parallel workers
+
+As soon as `batch.py progress` shows captured pages, launch worker agents
+with the Agent tool (`general-purpose`), **all in one message** so they run
+concurrently, as many as there is work for, up to 10 at a time. Each worker
+claims pages itself (`batch.py next 1` is atomic), so two workers never get
+the same page. Worker prompt (fill in the brackets):
+
+> You are a UAT-vs-live worker in C:\…\<project folder>; run commands from
+> there. Read `<absolute R/ path>/analyse-page.md` and follow it exactly;
+> `S/` is `<absolute S/ path>`. Confluence: cloudId `<…>`, spaceId `<…>`,
+> parent page id `<…>` (or "no Confluence").
+> Process up to 3 pages, then stop. Return only one line per page:
+> `<slug> | <N> issues | <top 2 issues, short> | <Confluence URL>`.
+
+Every time a worker returns:
+
+1. Run `py -3.13 S/batch.py progress` and show the bar to the user with the
+   worker's lines, e.g.
+
+   ```
+   [█████████░░░░░░░░░░░░░░░░░░░░░] 9/30 pages done (30%) | 6 analysing · 4 captured, waiting · 11 to capture · 0 failed · 0 need login | 87 issues so far
+   ✓ products-remote | 14 issues | CTA style not mapped; FAQ spacing | <url>
+   ```
+2. Run `py -3.13 S/report.py common`, then update the Confluence index page
+   with the contents of `work/_index.html`: `updateConfluencePage` (cloudId,
+   pageId = indexId, contentFormat `html`, body = the file's contents).
+   With many workers finishing close together, do this at most once per
+   returning worker, not per page.
+3. If pages are still `captured` (or capture is still running), launch a
+   replacement worker straight away so the pool stays full.
+
+If capture is still running and no page is `captured` yet, wait for the
+capture output rather than launching idle workers. A worker that hits an
+error marks its page `failed` with a note; report failed pages at the end and
+offer to retry them (`batch.py mark <slug> captured`).
+
+**Single page or a handful:** same pipeline, but you may analyse the pages
+yourself (follow `R/analyse-page.md`) instead of launching workers,
+and show the full Issues table in the terminal.
+
+## Step 5: Finish
+
+When everything is done (or the user stops):
+
+- Show the final progress bar, the per-page one-liners, and the top common
+  issues from `reports/_common-issues.md` (issue, number of pages, languages).
+- Give the paths: `reports/<slug>.md` per page, `reports/_common-issues.md`,
+  and the Confluence index URL.
+- List anything in `failed` or `login` with the reason.
+
+## Grouping rules (apply everywhere)
+
+- **One root cause = one issue.** Every CTA with the same wrong style on a
+  page is one issue ("all primary CTAs"), not one per button.
+- **Same issue in several languages = one row** with a Languages column
+  listing them all (e.g. "English, German, French (3/17)"). Screenshots for
+  one representative language (English if affected).
+- **Same issue on several pages** is rolled up in `reports/_common-issues.md`
+  and the Confluence index page by `report.py common`, which matches issues by
+  their `signature`. Give an issue the diff lead's `sig` whenever it came from
+  a lead, so the same fault on different pages groups together.
+
+## Status rules: 404, 301 and redirects (decide first, per locale)
+
+Settle each locale's status before comparing anything. Use the HTTP status
+and final URL from the coverage table in `diff.md` (or `browse.py`).
+
+| Internal | Live | Result |
+|---|---|---|
+| 404 | 404 | **Expected behaviour.** Not an issue; list it in coverage. |
+| 404 | loads (or the reverse) | **Issue.** Report it, **no comparison** for that locale. |
+| 301 | 301 | **Expected behaviour.** Not an issue; list both destinations. |
+| 301 | no 301 (or the reverse) | **Issue.** Report it with where the 301 goes, **no comparison**. |
+| loads | redirects to another page | **Don't validate.** Only report where live redirects to. |
+
+Only locales where both sides load the same page get the full comparison.
+
+## What every comparison covers
+
+Content, UI, spacing, icons (including icon size), alignment, colours, CTAs,
+images, borders, backgrounds, tabs, accordions, and also:
+
+- **Dropdowns** (selects, filter menus, custom dropdowns): open each one on
+  both sides and compare the options (text, order, count), the default
+  value, the style, and what choosing an option does.
+- **CTA redirection**: follow every CTA and link to its final page on both
+  sides. Report one that ends on a different page, 404s, or opens in a new
+  tab on one side only (`target=_blank`).
+- **Videos** (including video CTAs and play buttons): the video is present,
+  the play button plays it or opens it, the source (YouTube / Vimeo id or
+  file) matches live, and the thumbnail, controls, autoplay / mute and modal
+  behaviour match.
+- **Anchor links** (`#id` links that scroll to another component on the same
+  page): the target exists, clicking scrolls to the same component as on
+  live, and the set and order of anchor links match live. Use live as the
+  reference in each locale: internal DE anchors against live DE anchors,
+  and so on. **Do not check landing position or sticky-header offset.**
+- **Every locale the site has**, not only EN/DE/FR: missing on one side or
+  untranslated is an issue.
+
+The capture does not record dropdowns, videos or anchor links, so check them
+on screen with `browse.py` (a `js` expression per page) for every locale.
+`R/issue-checklist.md` sections 13-16 list what to look for.
+
+## Comparison ground rules
+
+- Report only differences you measured or saw. Every finding has the UAT
+  value and the live value.
+- **Pages are captured at 1440px wide** (both sides) so the header shows in
+  full; don't compare at a narrower desktop width.
+- Header: compare **the navigation menu items** and **the header CTA**.
+  - Menu items: every menu row (the main menu, and a second row such as a
+    section's own navigation, e.g. Trust Center > Overview, Security
+    posture...): labels, items missing or extra, and order. Don't open the
+    mega menus and don't follow menu links.
+  - Header CTA (styled button on the right, e.g. "Beratungstermin
+    vereinbaren", "Kostenloser Download"): present on one side only, style,
+    text, final destination after redirects, new tab.
+  - Never report the top-bar utility links (contact sales, phone, sign in,
+    "Company"). The footer is out of scope.
+- Tabs and accordions: report when clicking a tab or expanding an item sets
+  a URL query or hash on live but not on UAT (or a different one).
+- **Never report font size or font weight differences.**
+- Never report body text #2D2D2D (UAT) vs #545454 (live).
+- Never report `<html lang>` code variants of the same language (`zh` vs
+  `zh-CN`, `zh-TW` vs `zh-HK`). Do report content in the wrong language.
+- Never report live `/ru/` → `/ru-cis/` vs internal `/ru/`. Compare RU content
+  against live `/ru-cis/`.
+- Never report card or column width differences on their own, or CTA width.
+- Ignore spacing differences of 2px or less.
+- Links: compare the final page after redirects, not the raw href.
+- Compare component to component: find each live component anywhere on UAT
+  (tabs, lazy content) before calling it missing.
+- Rotating/personalised content (carousels, dates, testimonials order) goes
+  under "Possibly not an issue".
+- Locale mismatches (loads on one side only, redirects elsewhere, wrong
+  language) always go in the Issues table.
+
+## Site behaviours seen in earlier runs
+
+- Live URLs with `?tab=…` keep that query in the plan (hreflang links drop it),
+  and the site scrolls to the tabs on load; capture scrolls back to the top
+  before screenshots.
+- Some pages make `<body>` its own scroll area; `pw.py` forces
+  `overflow: visible` on `html, body` so the window scrolls and full-page
+  screenshots aren't cut. If a slice still starts mid-page, check
+  `document.body.scrollTop`.
+- Images inside accordion items lazy-load; `capture_issues.py` waits up to 3 s
+  after opening, so a missing thumbnail in a shot is not an issue until checked.
+- The sites may reset connections after many loads (`ERR_CONNECTION_RESET`,
+  `ERR_ABORTED`); retry with `--concurrency 1`.
+
+`R/issue-checklist.md` lists the typical issue types, likely causes
+and owners; sections 10-12 cover tabs, accordions and the header.
