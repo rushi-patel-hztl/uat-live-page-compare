@@ -1,4 +1,4 @@
-<title>Special pages QA log</title>
+<title>Special Pages Batch 7</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,6 +40,19 @@ a { color: var(--accent); overflow-wrap: anywhere; }
 .stats { display: flex; flex-wrap: wrap; gap: 10px 32px; margin-top: 18px; }
 .stat b { display: block; font: 500 28px var(--font-data); font-variant-numeric: tabular-nums; }
 .stat span { color: var(--muted); font-size: 13px; }
+.stat.bad b { color: var(--sevB); }
+.messy-pill { font: 600 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--sevB-bg); color: var(--sevB); border: 1px solid var(--sevB); margin-left: 8px; vertical-align: middle; white-space: nowrap; }
+.quick { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--sunk); color: var(--live); border: 1px solid var(--live); }
+.uitag { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.messy-pill.tag { margin-left: 0; }
+.alarm-panel { background: var(--sevB-bg); border: 1px solid var(--sevB); border-radius: 10px; padding: 18px 20px; display: grid; gap: 10px; }
+.alarm-panel h2 { color: var(--sevB); }
+.alarm-panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.alarm-panel li { display: grid; gap: 2px; }
+.alarm-panel li button { all: unset; cursor: pointer; font-weight: 600; color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+.alarm-panel li span { font-size: 13.5px; color: var(--fg); }
+.alarm { font-size: 13.5px; color: var(--sevB); background: var(--sevB-bg); border: 1px solid var(--sevB); border-radius: 8px; padding: 8px 12px; display: grid; gap: 2px; }
+.alarm b { font-weight: 600; }
 .progress { display: grid; gap: 8px; margin-top: 18px; max-width: 760px; }
 .bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--sunk); }
 .bar i { display: block; height: 100%; }
@@ -107,7 +120,8 @@ input[type=search] { flex: 1 1 200px; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; color: var(--muted); }
 .kind, .sev { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; }
 .kind { background: var(--sunk); color: var(--fg); }
-.kind.Locale, .kind.Source, .kind.Target { background: var(--heat1); color: var(--heat-ink); }
+.kind.ui { background: var(--accent-soft); color: var(--accent); }
+.kind.Locale, .kind.Source, .kind.Target, .kind.Fallback { background: var(--heat1); color: var(--heat-ink); }
 .sev.Blocker { background: var(--sevB-bg); color: var(--sevB); } .sev.Major { background: var(--sevM-bg); color: var(--sevM); } .sev.Minor { background: var(--sevN-bg); color: var(--sevN); }
 .rcc { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
 .rcc.regressed { background: var(--sevB-bg); color: var(--sevB); } .rcc.fixed { background: var(--sunk); color: var(--live); }
@@ -156,6 +170,12 @@ footer { color: var(--muted); font-size: 13px; }
     <p class="note" id="dbNote" hidden></p>
   </header>
 
+  <section class="alarm-panel" aria-labelledby="hAlarm" id="alarmPanel" hidden>
+    <h2 id="hAlarm"></h2>
+    <p class="note">A page is Messy when UAT and live are different versions, two or more components are missing or duplicated, a locale loads blank or repeats page blocks, or at least half of its sections (on pages with 4 or more) have a Blocker or Major issue.</p>
+    <ul id="alarmList"></ul>
+  </section>
+
   <section class="panel" aria-labelledby="hHeat">
     <h2 id="hHeat">Issues per page and locale</h2>
     <div class="scroll"><table class="heat" id="heat"></table></div>
@@ -174,7 +194,7 @@ footer { color: var(--muted); font-size: 13px; }
     <div class="toolbar">
       <select id="fPage" aria-label="Page"></select>
       <select id="fLang" aria-label="Locale"></select>
-      <details class="multi" id="kindDD"><summary id="kindSum" aria-label="Issue type">All types</summary>
+      <details class="multi" id="kindDD"><summary id="kindSum" aria-label="Issue type">All issue types</summary>
         <div class="menu"><div class="acts"><button type="button" id="kAll">Select all</button><button type="button" id="kNone">Unselect all</button></div><div id="kList"></div></div></details>
       <select id="fStatus" aria-label="Status"></select>
       <select id="fSev" aria-label="Severity"></select>

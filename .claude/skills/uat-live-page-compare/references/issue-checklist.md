@@ -172,8 +172,8 @@ Decide this first, per locale (SKILL.md "Status rules").
 |---|---|---|
 | 404 on both internal and live | Expected behaviour, not an issue | n/a |
 | 404 on one side only | Issue, no comparison for that locale | Content / Manual, or DEV |
-| 301 on both sides | Expected behaviour, not an issue (list destinations) | n/a |
-| 301 on one side only | Issue with the 301 destination, no comparison | DEV (redirect rule) or Content / Manual |
+| 301 or 302 on both sides | Expected behaviour, not an issue (list destinations) | n/a |
+| 301 or 302 on one side only | Issue with the redirect destination, no comparison | DEV (redirect rule) or Content / Manual |
 | Live redirects to another page, internal loads | Don't validate; report only where live redirects to | Needs discussion |
 
 ## 14. CTA redirection and dropdowns

@@ -32,7 +32,7 @@ const bar = (c, n) => `<div class="bar" role="img" aria-label="${c.Fixed} of ${n
 $("#heading").textContent = D.heading;
 $("#intro").textContent = D.intro;
 const langsHit = new Set(all.flatMap((i) => i.langs));
-const kindsAll = [...new Set([...all.map((i) => i.kind), "Source 404", "Target 404"])].sort();
+const kindsAll = D.type_order.filter((t) => all.some((i) => i.types.includes(t)));
 const selKinds = new Set(kindsAll);
 const issueOf = (s, id) => bySlug[s].issues.find((x) => x.id === id);
 const cls = (n) => n === 0 ? "" : n === 1 ? "h1" : n <= 3 ? "h2" : n <= 6 ? "h3" : "h4";
@@ -46,7 +46,7 @@ function passState(i) {
   return true;
 }
 const stateFiltered = () => !!($("#fStatus").value || $("#fSev").value || $("#fMine").checked);
-const kindOn = (i) => selKinds.has(i.kind) && passState(i);
+const kindOn = (i) => i.types.some((t) => selKinds.has(t)) && passState(i);
 const kindsFiltered = () => selKinds.size !== kindsAll.length || stateFiltered();
 
 // the work strip under an issue or a shared group
@@ -98,12 +98,16 @@ function renderSummary() {
   const refsOf = (g) => g.refs.filter(([s, id]) => { const i = issueOf(s, id); return i && kindOn(i); });
   const sh = D.shared.map((g) => ({ g, refs: refsOf(g) })).filter((x) => x.refs.length);
   const openBlk = vis.filter((i) => sevOf(i) === "Blocker" && !done(st(T.issues[i.key]))).length;
-  $("#stats").innerHTML = [[vis.length, "issues"], [openBlk, "open blockers"], [pg.length, "pages"], [lh.size + " / 17", "locales affected"], [sh.length, "fix-once groups"]]
-    .map(([n, t]) => `<div class="stat"><b>${n}</b><span>${t}</span></div>`).join("");
+  const messy = D.pages.filter((p) => p.messy && p.messy.on);
+  $("#alarmPanel").hidden = !messy.length;
+  $("#hAlarm").textContent = `${messy.length} messy page${messy.length === 1 ? "" : "s"}`;
+  $("#alarmList").innerHTML = messy.map((p) => `<li><button data-go="${esc(p.slug)}">${esc(p.label)}</button>${p.messy.why.map((w) => `<span>${esc(w)}</span>`).join("")}</li>`).join("");
+  $("#stats").innerHTML = [[vis.length, "issues"], [openBlk, "open blockers"], [messy.length, "messy pages", "bad"], [pg.length, "pages"], [lh.size + " / 17", "locales affected"], [sh.length, "fix-once groups"]]
+    .map(([n, t, c]) => `<div class="stat ${c || ""}"><b>${n}</b><span>${t}</span></div>`).join("");
   renderProgress();
   let h = `<thead><tr><th></th>${codes.map((c) => `<th title="${esc(names[c])}">${c}</th>`).join("")}<th>All</th><th>Fixed</th></tr></thead><tbody>`;
   for (const { p, is } of pg) {
-    h += `<tr><th class="row"><button data-go="${esc(p.slug)}">${esc(p.label)}</button></th>`;
+    h += `<tr><th class="row"><button data-go="${esc(p.slug)}">${esc(p.label)}</button>${p.messy && p.messy.on ? `<span class="messy-pill">Messy</span>` : ""}</th>`;
     for (const c of codes) {
       if (!p.checked.includes(c)) { h += `<td class="na" title="${esc(names[c])}: not checked"></td>`; continue; }
       const n = is.filter((i) => i.langs.includes(c) && i.rc !== "fixed").length;
@@ -124,7 +128,7 @@ function renderSummary() {
       <p class="fixline"><span class="fix">Fix in: ${esc(g.fix)}</span>${esc(g.note)}</p>
       <div class="refs">${refs.map(([s, id]) => `<button data-go="${esc(s)}" data-id="${id}">${esc(bySlug[s].label)} #${id}</button>`).join(" · ")}</div>
       <span class="gp">${gc.Fixed} of ${g.refs.length} issues fixed</span></div>
-    <div class="chips"><span class="sev ${top}">${top}</span><span class="kind">${esc(g.kind)}</span></div>
+    <div class="chips"><span class="sev ${top}">${top}</span>${g.types.map((t) => `<span class="kind${t === "UI" ? " ui" : ""}">${esc(t)}</span>`).join("")}</div>
     ${workHtml("groups", g.id, true, g.refs.length)}</div>`;
   }).join("");
   $("#shared").querySelectorAll(".work").forEach(syncWork);
@@ -133,11 +137,11 @@ function topSev(g) { return Math.min(...g.refs.map(([s, id]) => { const i = issu
 if (D.heat_note) $("#heatNote").textContent = D.heat_note; else $("#heatNote").hidden = true;
 
 // issue-type multi-select
-const kCount = Object.fromEntries(kindsAll.map((k) => [k, all.filter((i) => i.kind === k).length]));
+const kCount = Object.fromEntries(kindsAll.map((k) => [k, all.filter((i) => i.types.includes(k)).length]));
 $("#kList").innerHTML = kindsAll.map((k) => `<label><input type="checkbox" value="${esc(k)}" checked>${esc(k)}<small>${kCount[k]}</small></label>`).join("");
 function syncKinds() {
   for (const cb of document.querySelectorAll("#kList input")) cb.checked = selKinds.has(cb.value);
-  $("#kindSum").textContent = selKinds.size === kindsAll.length ? "All types" : selKinds.size === 0 ? "No types selected" : selKinds.size === 1 ? [...selKinds][0] : `${selKinds.size} types selected`;
+  $("#kindSum").textContent = selKinds.size === kindsAll.length ? "All issue types" : selKinds.size === 0 ? "No types selected" : selKinds.size === 1 ? [...selKinds][0] : `${selKinds.size} types selected`;
 }
 function setKinds(on) { selKinds.clear(); if (on) kindsAll.forEach((k) => selKinds.add(k)); syncKinds(); }
 $("#kList").onchange = (e) => { e.target.checked ? selKinds.add(e.target.value) : selKinds.delete(e.target.value); syncKinds(); render(); };
@@ -165,11 +169,11 @@ syncKinds();
 const SEG = { CN: "cn", TW: "tw" };
 const localeUrl = (url, c) => url.replace(/^(https?:\/\/[^/]+)\/[a-z]{2}(?=\/|$)/i, `$1/${SEG[c] || c.toLowerCase()}`);
 function issueHtml(p, i) {
-  const shot = (side, label) => i.shots[side] ? `<figure><figcaption style="color:var(--${side})">${label}</figcaption><img loading="lazy" src="${esc(i.shots[side])}" alt="${label} screenshot for issue ${i.id}"></figure>` : "";
+  const shot = (side, label) => i.shots[side] ? `<figure><figcaption style="color:var(--${side})">${label}</figcaption><img loading="lazy" src="${esc(i.shots[side])}" data-p="${esc(p.slug)}" data-s="${esc(i.shots[side])}" alt="${label} screenshot for issue ${i.id}"></figure>` : "";
   const shots = shot("uat", "UAT") + shot("live", "Live");
   const d = T.issues[i.key], sev = (d && d.sev) || i.sev;
   return `<article class="issue s-${SC[st(d)]}" id="${esc(p.slug)}-${i.id}"><span class="num">#${i.id}</span><div class="body">
-    <div class="meta"><span class="sev ${sev}">${sev}</span>${RC[i.rc] ? `<span class="rcc ${i.rc}">${RC[i.rc]}</span>` : ""}<span class="kind ${esc(i.kind)}">${esc(i.kind)}</span><span>${esc(i.component)}</span></div>
+    <div class="meta">${i.messy ? `<span class="messy-pill tag">Messy</span>` : ""}${i.quick ? `<span class="quick" title="Live has no such page, so removing it from UAT clears this issue">Quick fix: ${esc(i.quick)}</span>` : ""}<span class="sev ${sev}">${sev}</span>${RC[i.rc] ? `<span class="rcc ${i.rc}">${RC[i.rc]}</span>` : ""}${i.types.map((t) => `<span class="kind${t === "UI" ? " ui" : ""}">${esc(t)}</span>`).join("")}<span>${esc(i.component)}</span></div>
     <h3>${esc(i.issue)}</h3>
     <div class="vals"><div><span class="k u">UAT</span>${esc(i.uat)}</div><div><span class="k l">Live</span>${esc(i.live)}</div></div>
     <div class="langs">${codes.filter((c) => p.checked.includes(c)).map((c) => i.langs.includes(c)
@@ -191,11 +195,11 @@ function render() {
       && (!ft || [i.issue, i.component, i.uat, i.live, i.cause].join(" ").toLowerCase().includes(ft)));
     shown += list.length;
     if (!list.length && (fl || ft || kindsFiltered())) continue;
-    if (bySev) list.sort((a, b) => SR[sevOf(a)] - SR[sevOf(b)] || a.id - b.id);
+    list.sort((a, b) => (b.messy ? 1 : 0) - (a.messy ? 1 : 0) || (bySev ? SR[sevOf(a)] - SR[sevOf(b)] : 0) || a.id - b.id);
     const w = list.reduce((n, i) => n + (done(st(T.issues[i.key])) ? 0 : SW[SR[sevOf(i)]]), 0);
     const pc = cnt(p.issues);
-    blocks.push({ w, html: `<section class="page" id="${esc(p.slug)}"><div class="page-head"><span class="eyebrow">${p.issues.length} issue${p.issues.length === 1 ? "" : "s"} · ${pc.Fixed} fixed · ${p.checked.length} locale${p.checked.length === 1 ? "" : "s"} checked${p.updated ? " · " + esc(p.updated) : ""}</span>
-      <h2>${esc(p.label)}</h2>${p.label !== p.title ? `<p class="note">${esc(p.title)}</p>` : ""}
+    blocks.push({ w, m: p.messy && p.messy.on ? 1 : 0, html: `<section class="page" id="${esc(p.slug)}"><div class="page-head"><span class="eyebrow">${p.issues.length} issue${p.issues.length === 1 ? "" : "s"} · ${pc.Fixed} fixed · ${p.checked.length} locale${p.checked.length === 1 ? "" : "s"} checked${p.updated ? " · " + esc(p.updated) : ""}</span>
+      <h2>${esc(p.label)}${p.messy && p.messy.on ? `<span class="messy-pill">Messy</span>` : ""}</h2>${p.messy && p.messy.on ? `<div class="alarm" role="alert"><b>Messy page</b>${p.messy.why.map((w) => `<span>${esc(w)}</span>`).join("")}</div>` : ""}${p.label !== p.title ? `<p class="note">${esc(p.title)}</p>` : ""}
       <div class="urls"><span><span class="u">UAT</span> <a href="${esc(p.uat)}" target="_blank" rel="noopener">${esc(p.uat)}</a></span><span><span class="l">Live</span> <a href="${esc(p.live)}" target="_blank" rel="noopener">${esc(p.live)}</a></span></div>
       <div class="rc" data-slug="${esc(p.slug)}"></div></div>
       ${list.map((i) => issueHtml(p, i)).join("") || `<p class="empty">No issues found on this page.</p>`}
@@ -203,7 +207,7 @@ function render() {
       ${p.couldnt_check.length ? `<details><summary>Couldn't check (${p.couldnt_check.length})</summary><ul>${p.couldnt_check.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
     </section>` });
   }
-  if (bySev) blocks.sort((a, b) => b.w - a.w);
+  blocks.sort((a, b) => b.m - a.m || (bySev ? b.w - a.w : 0));
   $("#pages").innerHTML = blocks.map((b) => b.html).join("") || `<p class="empty">No issues match these filters.</p>`;
   $("#pages").querySelectorAll(".work").forEach(syncWork);
   $("#pages").querySelectorAll(".rc").forEach(rcFill);
@@ -296,6 +300,25 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#lightbox").classList.remove("open"); });
 $("#foot").textContent = `Built ${D.built} from the UAT vs live comparison reports. Status, assignee and notes are shared with everyone who opens this page.`;
 if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
+
+// some artifacts ship screenshots packed, one text file per page (packs/<slug>.txt: 4-byte header length,
+// JSON {path: [offset, length]}, then the image bytes, all base64). A screenshot whose own file is missing falls back to its pack.
+const packs = {};
+function loadPack(slug) {
+  if (!packs[slug]) packs[slug] = fetch("packs/" + encodeURIComponent(slug) + ".txt").then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); }).then((txt) => {
+    const bin = atob(txt), buf = new Uint8Array(bin.length).buffer, u8 = new Uint8Array(buf); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+    const n = new DataView(buf).getUint32(0), idx = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, n))), out = {};
+    for (const [k, [o, l]] of Object.entries(idx)) out[k] = URL.createObjectURL(new Blob([buf.slice(4 + n + o, 4 + n + o + l)], { type: "image/jpeg" }));
+    return out;
+  });
+  return packs[slug];
+}
+document.addEventListener("error", (e) => {
+  const im = e.target;
+  if (!im || im.tagName !== "IMG" || !im.dataset.p || im.dataset.tried) return;
+  im.dataset.tried = "1";
+  loadPack(im.dataset.p).then((m) => { if (m[im.dataset.s]) im.src = m[im.dataset.s]; else im.alt += " (could not load)"; }).catch(() => { im.alt += " (could not load)"; });
+}, true);
 
 // connect to the shared store; the page works read-only without it
 const use = async (n) => { try { return window.claude && window.claude.use ? await window.claude.use(n) : null; } catch (e) { return null; } };

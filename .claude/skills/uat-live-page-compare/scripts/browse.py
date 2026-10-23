@@ -64,6 +64,7 @@ async def capture(ctx, entry, out, opts, shots=True):
         await page.evaluate(DISMISS_JS)  # pop-ups that only open on scroll
         data = await page.evaluate("() => window.__cmpData")
         data["status"] = status
+        data["redirect"] = getattr(page, "first_hop", None)
         (out / f"{name}.txt").write_text(await page.evaluate("() => window.__cmpOut"), encoding="utf-8")
         (out / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         slices = 0

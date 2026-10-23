@@ -7,3 +7,4 @@ artifact-webinars/
 .claude/skills/uat-live-page-compare/scripts/work/
 __pycache__/
 *.pyc
+artifact-downloads/

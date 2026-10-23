@@ -85,6 +85,14 @@ def _extra_headers():
 async def load(page, url):
     """Open url, hide cookie banners, close pop-ups. Returns (status, login_needed)."""
     resp = await page.goto(url, wait_until="load", timeout=60000)
+    page.first_hop = None  # status of the first response when the URL redirected (301, 302, ...)
+    if resp:
+        req = resp.request
+        while req.redirected_from:
+            req = req.redirected_from
+        if req is not resp.request:
+            first = await req.response()
+            page.first_hop = first.status if first else None
     try:
         await page.wait_for_load_state("networkidle", timeout=4000)
     except Exception:

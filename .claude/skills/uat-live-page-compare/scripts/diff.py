@@ -302,6 +302,10 @@ def compare_header(u, l, add):
                 " | ".join(ur["items"]), " | ".join(lr["items"]))
 
 
+def is_redirect(s):
+    return bool(re.match(r"30[1278] to ", s or ""))
+
+
 def page_status(d, err):
     if err:
         return err
@@ -309,6 +313,8 @@ def page_status(d, err):
         return "Not captured"
     if d.get("status") == 404 or d.get("is404"):
         return "404"
+    if d.get("redirect") in (301, 302, 307, 308):
+        return f'{d["redirect"]} to {d["url"]}'
     if not d["blocks"]:
         return "Empty"
     return "Loads"
@@ -341,7 +347,7 @@ def run(work):
         us, ls = page_status(u, errors.get(f"{c}-uat")), page_status(l, errors.get(f"{c}-live"))
         lang = "Yes"
         add = adder(code)
-        if u and l:
+        if u and l and not (is_redirect(us) or is_redirect(ls)):
             if u["lang"].split("-")[0].lower() != l["lang"].split("-")[0].lower():
                 lang = f'UAT lang={u["lang"]}, live lang={l["lang"]}'
             if code in NON_LATIN:
@@ -366,8 +372,10 @@ def run(work):
                     us = us if ufin.rstrip("/") == urlparse(urls["uat"]).path.rstrip("/") else f"Redirects to {u['url']}"
                     ls = ls if lfin.rstrip("/") == urlparse(urls["live"]).path.rstrip("/") else f"Redirects to {l['url']}"
             compare_locale(code, u, l, add)
-        if us != ls and not (us == "Loads" and ls.startswith("Redirects to") and code == "RU"):
-            add(f"status:{us[:12]}>{ls[:12]}", "Locale", "Whole page", "Page status differs", us, ls)
+        if is_redirect(us) and is_redirect(ls):
+            pass  # 301/302 on both sides is expected; both destinations are in the coverage table
+        elif us != ls and not (us == "Loads" and ls.startswith("Redirects to") and code == "RU"):
+            add(f"status:{us.split(' to ')[0][:12]}>{ls.split(' to ')[0][:12]}", "Locale", "Whole page", "Page status differs", us, ls)
         coverage.append({"locale": code, "language": NAMES[code], "uat": urls["uat"], "live": urls["live"],
                          "listed_on_live": urls.get("listed", True), "uat_status": us, "live_status": ls, "lang_ok": lang,
                          "blocks": f'{len(u["blocks"]) if u else "-"}/{len(l["blocks"]) if l else "-"}'})

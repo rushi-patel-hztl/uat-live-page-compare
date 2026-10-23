@@ -190,11 +190,21 @@ and final URL from the coverage table in `diff.md` (or `browse.py`).
 |---|---|---|
 | 404 | 404 | **Expected behaviour.** Not an issue; list it in coverage. |
 | 404 | loads (or the reverse) | **Issue.** Report it, **no comparison** for that locale. |
-| 301 | 301 | **Expected behaviour.** Not an issue; list both destinations. |
-| 301 | no 301 (or the reverse) | **Issue.** Report it with where the 301 goes, **no comparison**. |
+| 301 / 302 | 301 / 302 | **Expected behaviour.** Not an issue; list both destinations (a 301 on one side and a 302 on the other still counts). |
+| 301 / 302 | no redirect (or the reverse) | **Issue.** Report it with where the 301/302 goes, **no comparison**. |
 | loads | redirects to another page | **Don't validate.** Only report where live redirects to. |
 
 Only locales where both sides load the same page get the full comparison.
+
+**EN Fallback Issue.** When a non-English locale's live page loads (200) but its
+whole content is in English, the locale is falling back to EN on live. If UAT
+differs in that locale (translated text, blank or empty sections, different
+components), the cause is almost always the fallback, so report **one** issue
+per page: kind `EN Fallback`, signature `locale-en-fallback`, listing the
+locales and what UAT shows instead. Drop the text, content and missing/extra
+component leads for those locales (they all follow from the fallback) and keep
+only structural and styling leads. When both sides are English and nothing
+differs, it is not an issue; list it in coverage.
 
 ## What every comparison covers
 
@@ -256,6 +266,56 @@ on screen with `browse.py` (a `js` expression per page) for every locale.
   under "Possibly not an issue".
 - Locale mismatches (loads on one side only, redirects elsewhere, wrong
   language) always go in the Issues table.
+
+## Naming missing things: count components first
+
+Count the components on each side (the `blocks=` figure in the snapshot header
+and the `#n` sections), then choose the kind:
+
+- **Same component count, something inside a component is missing** (eyebrow,
+  subheading, text, image, caption, field): kind `Content Missing`.
+- **UAT has fewer components than live** (a whole component is absent): kind
+  `Component Missing`.
+- **UAT has more components than live** (a component that live does not have):
+  kind `Additional Component`.
+- A component repeated on UAT stays `Duplicated component`.
+
+A difference inside a component that is not "missing" (wrong text, other
+colour) keeps its usual kind (`Content`, `Colour`, ...).
+
+**Header issue.** Anything about the header component (menu labels, items,
+order, the top-right header CTA) is kind `Header` (component text starting
+"Header"); the QA tracker tags it as a Header issue so it can be filtered on
+its own, even when it is also a styling difference.
+
+**UI tag.** Pure styling and layout differences (colour, background, alignment,
+layout, spacing, icon or badge size, image corners, accordion or CTA style) are
+tagged UI by the QA tracker so the migration team can hide them and work on
+the rest. Use one of the kinds `UI`, `Colour`, `Background`, `Alignment`,
+`Layout`, `Spacing / heading`, `Accordion style` for them. Broken or different
+images (an asset problem) and anything about content, links or structure are
+not UI. Before calling a
+component missing or additional, search the other side for it (SKILL.md,
+"Compare component to component").
+
+## Page versions that differ, and the Messy flag
+
+- **Both sides load but are different versions of the page** (for example UAT
+  has the pre-event page and live the post-event page): report it as one issue
+  with signature `version-mismatch`, set `"version_mismatch": true` in
+  `findings.json`, and **keep comparing**. Every component that exists on both
+  sides still gets the styling, dropdown, video, anchor and CTA checks, and
+  components found on one side only are reported as missing or extra. Never
+  skip checks because the versions differ, and never end by asking the user
+  whether to continue.
+- **Messy** is a page-level alarm that the QA tracker (`artifact-special/build.py`)
+  computes from `findings.json`. A page is Messy when any one holds: the two
+  sides are different versions (`version_mismatch`); two or more components are
+  missing or duplicated (`kind` "Missing component" or "Duplicated component");
+  a locale loads blank or repeats page blocks (signature `locale-<xx>-empty` or
+  the dedup group); or at least 50% of the page's sections have a Blocker or
+  Major issue, on pages with 4 or more sections. Use those `kind` values and
+  signatures consistently so the flag is computed correctly.
 
 ## Site behaviours seen in earlier runs
 

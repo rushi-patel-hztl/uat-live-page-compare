@@ -74,10 +74,10 @@ stop and return what you have.
     new-tab behaviour. `HEADER (no CTA in the header)` when there is none.
   The top-bar utility links (contact sales, phone, sign in) are not
   captured and never reported.
-- **Status first** (SKILL.md "Status rules"): both sides 404, or both 301,
+- **Status first** (SKILL.md "Status rules"): both sides 404, or both 301/302,
   is expected behaviour, not an issue. Only one side 404 or only one side
-  301 is an issue with no comparison for that locale (give the 301
-  destination). Internal loads but live redirects elsewhere: don't
+  301/302 is an issue with no comparison for that locale (give the
+  redirect destination). Internal loads but live redirects elsewhere: don't
   validate, only report where live goes. Drop every other lead for those
   locales.
 - **Locale leads** (status differs, wrong language, unlisted locale) are
