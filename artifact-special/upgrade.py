@@ -1,12 +1,12 @@
 """Upgrade an existing QA-log artifact page to the tracker format.
 
-  python artifact-special/upgrade.py SOURCE.html OUT.html [--heading "..."]
+  python upgrade.py SOURCE.html OUT.html [--title "Page name"] [--heading "..."]
 
 SOURCE is the saved HTML of a QA-log artifact (the Artifact tool's read saves it). Its data
 (<script type="application/json" id="data">, or `const DATA = {...}`) is kept as it is; each issue
 gains severity, UI flag, issue types (Source 404, Content Missing, Missing Image, UI, ...) and the
 Messy flag is worked out per page. Shared groups gain an id, a likely fix and types. The page
-itself is written from artifact-special/src (head.html and app.js), so every upgraded artifact looks
+itself is written from src/head.html and src/app.js next to this file, so every upgraded artifact looks
 and behaves like the special-pages tracker. Screenshots keep their paths, so a republish to the
 same artifact keeps them. Prints what changed so the counts can be checked before publishing.
 """
@@ -31,7 +31,7 @@ def load_data(html):
     sys.exit('No QA-log data found in the source page.')
 
 
-def upgrade(d):
+def upgrade(d, sections=None):
     for p in d['pages']:
         for i in p['issues']:
             i.setdefault('shots', {}); i.setdefault('also', []); i.setdefault('langs', []); i.setdefault('cause', '')
@@ -44,7 +44,7 @@ def upgrade(d):
             i['quick'] = 'Unpublish in Sitecore' if i['kind'] == 'Source 404' or i['sig'] == 'faq-extra-locales' else ''
             i['rc'] = ''
             i['types'] = types_of(i['kind'], i['ui'], i['issue'] + ' | ' + i['uat'], i['component'], i['sig'])
-        p['messy'] = messy_check(p['issues'], 0)
+        p['messy'] = messy_check(p['issues'], (sections or {}).get(p['slug'], 0), bool(p.get('version_mismatch')))
         p.setdefault('not_issues', []); p.setdefault('couldnt_check', [])
     by = {p['slug']: p for p in d['pages']}
     used = set()
@@ -60,6 +60,17 @@ def upgrade(d):
         if 'kind' not in g: g['kind'] = g['types'][0]
     d['type_order'] = TYPE_ORDER
     return d
+
+
+def page_html(d, html_title=None):
+    """The tracker page: head + the data as JSON + the app script."""
+    title = html_title or d.get('title') or 'QA log'
+    head = (SRC / 'head.html').read_text(encoding='utf8')
+    head = re.sub(r'<title>.*?</title>', lambda m: '<title>' + title + '</title>', head, count=1, flags=re.S)
+    app = (SRC / 'app.js').read_text(encoding='utf8')
+    blob = json.dumps(d, ensure_ascii=False).replace('</', '<'+chr(92)+'/').replace(chr(0xfffd), chr(92) + 'ufffd')
+    nl = chr(10)
+    return head + nl + '<script type="application/json" id="data">' + blob + '</script>' + nl + '<script>' + nl + app + '</script>' + nl
 
 
 def summary(d):
@@ -89,10 +100,7 @@ if __name__ == '__main__':
     if '--title' in sys.argv:
         d['title'] = sys.argv[sys.argv.index('--title') + 1]
     title = d.get('title') or re.search(r'<title>(.*?)</title>', html, re.S).group(1)
-    head = (SRC / 'head.html').read_text(encoding='utf8').replace('<title>Special Pages Batch 7</title>', f'<title>{title}</title>', 1)
-    app = (SRC / 'app.js').read_text(encoding='utf8')
-    blob = json.dumps(d, ensure_ascii=False).replace('</', '<\\/').replace(chr(0xfffd), chr(92) + 'ufffd')
-    pathlib.Path(sys.argv[2]).write_text(head + '\n<script type="application/json" id="data">' + blob + '</script>\n<script>\n' + app + '</script>\n', encoding='utf8')
+    pathlib.Path(sys.argv[2]).write_text(page_html(d, title), encoding='utf8')
     n, types, sev, messy = summary(d)
     print(f'{n} issues kept, {len(d["pages"])} pages, {len(d.get("shared", []))} shared groups')
     print('types', types); print('severity', sev); print('messy', messy)

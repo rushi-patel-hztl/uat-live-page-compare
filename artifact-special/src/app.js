@@ -169,7 +169,7 @@ syncKinds();
 const SEG = { CN: "cn", TW: "tw" };
 const localeUrl = (url, c) => url.replace(/^(https?:\/\/[^/]+)\/[a-z]{2}(?=\/|$)/i, `$1/${SEG[c] || c.toLowerCase()}`);
 function issueHtml(p, i) {
-  const shot = (side, label) => i.shots[side] ? `<figure><figcaption style="color:var(--${side})">${label}</figcaption><img loading="lazy" src="${esc(i.shots[side])}" data-p="${esc(p.slug)}" data-s="${esc(i.shots[side])}" alt="${label} screenshot for issue ${i.id}"></figure>` : "";
+  const shot = (side, label) => i.shots[side] ? `<figure><figcaption style="color:var(--${side})">${label}</figcaption><img${D.packs ? "" : ` loading="lazy" src="${esc(i.shots[side])}"`} data-p="${esc(p.slug)}" data-s="${esc(i.shots[side])}" alt="${label} screenshot for issue ${i.id}"></figure>` : "";
   const shots = shot("uat", "UAT") + shot("live", "Live");
   const d = T.issues[i.key], sev = (d && d.sev) || i.sev;
   return `<article class="issue s-${SC[st(d)]}" id="${esc(p.slug)}-${i.id}"><span class="num">#${i.id}</span><div class="body">
@@ -214,6 +214,7 @@ function render() {
   renderSummary();
   fillOwners();
   $("#shown").textContent = `${shown} of ${all.length} issues`;
+  if (D.packs) watchShots();
 }
 function fillOwners() {
   const o = new Set(); for (const c of [T.issues, T.groups]) for (const d of Object.values(c)) if (d && d.owner) o.add(d.owner);
@@ -312,6 +313,14 @@ function loadPack(slug) {
     return out;
   });
   return packs[slug];
+}
+// packed artifacts (D.packs): load a page's pack when its first screenshot nears the viewport
+function showShot(im) { loadPack(im.dataset.p).then((m) => { im.src = m[im.dataset.s] || im.dataset.s; }).catch(() => { im.src = im.dataset.s; }); }
+function watchShots() {
+  const pending = document.querySelectorAll("img[data-p]:not([src])");
+  if (!("IntersectionObserver" in window)) { pending.forEach(showShot); return; }
+  window.shotObs = window.shotObs || new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { window.shotObs.unobserve(e.target); showShot(e.target); } }), { rootMargin: "800px 0px" });
+  pending.forEach((im) => window.shotObs.observe(im));
 }
 document.addEventListener("error", (e) => {
   const im = e.target;

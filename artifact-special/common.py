@@ -1,4 +1,4 @@
-# Shared by build.py and recheck.py: locales, page labels, shared-fix groups, severity rules.
+# Tracker rules, shared by build.py, upgrade.py and recheck.py: locales, page labels, shared-fix groups, severity rules.
 LOC = [["EN","English"],["DE","German"],["FR","French"],["ES","Spanish"],["JA","Japanese"],["PT","Portuguese"],["CN","Chinese (Simplified)"],["HU","Hungarian"],["IT","Italian"],["KO","Korean"],["NL","Dutch"],["PL","Polish"],["TH","Thai"],["RU","Russian"],["CS","Czech"],["TW","Chinese (Traditional)"],["TR","Turkish"]]
 N2C = {n: c for c, n in LOC}
 LABEL = {"special-request-callback":"Request callback","special-reset-management":"Reset management","special-sales-upgrade-request":"Sales upgrade request","special-security-explained":"Security explained","special-splashtop-alternative":"Splashtop alternative","special-teamviewer-alternative":"TeamViewer alternative","special-teamviewer-dex-vs-controlup":"DEX vs ControlUp","special-teamviewer-dex-vs-lakeside":"DEX vs Lakeside","special-teamviewer-dex-vs-nexthink":"DEX vs Nexthink"}
@@ -80,7 +80,7 @@ def messy_check(issues, secs, version_mismatch=False):
         why.append("UAT and live are different versions of the page"); hit += [i for i in cur if i["sig"] == "version-mismatch"]
     md = [i for i in cur if i["kind"] in ("Component Missing", "Duplicated component")]
     if len(md) >= 2: why.append(f"{len(md)} components are missing or duplicated"); hit += md
-    bl = [i for i in cur if i["group"] == "dedup" or re.match(r"^locale-.*-(empty|blank)$", i["sig"])
+    bl = [i for i in cur if i["group"] == "dedup" or "dedup" in i["sig"] or "duplicated" in i["sig"] or re.match(r"^locale-.*-(empty|blank)$", i["sig"])
           or (i["kind"] == "Locale" and re.search(r"(renders no content|page is empty|is empty|0 blocks|repeats)", (i["issue"] + " " + i["uat"]).lower()))]
     hit += bl
     if bl: why.append("A locale loads blank or repeats page blocks (" + ", ".join(sorted({l for i in bl for l in i["langs"]})) + ")")

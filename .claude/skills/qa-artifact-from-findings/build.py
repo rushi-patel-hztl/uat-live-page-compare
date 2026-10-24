@@ -1,4 +1,4 @@
-"""Build a UAT-vs-live QA log artifact (heat grid, shared faults, per-page issues, screenshots)
+"""Build a UAT-vs-live QA tracker artifact (heat grid, shared faults, per-page issues, screenshots, status/owner tracking)
 from the work/<slug>/findings.json files that the uat-live-page-compare skill writes.
 
 Run from the project folder (the one that holds work/ and reports/):
@@ -10,6 +10,8 @@ Writes OUT/index.html, OUT/packs/<slug>.txt (screenshots, base64 packs) and OUT/
 (lists of pack paths, each batch under ~55 MB, for successive Artifact publishes).
 """
 import argparse, base64, collections, io, json, pathlib, re, struct, sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / 'tracker'))
+import upgrade as tracker
 from urllib.parse import urlparse
 from PIL import Image
 
@@ -60,6 +62,16 @@ def label(s):
     return s.replace("-", " ").capitalize()
 
 
+def sections_of(slug):
+    n = 0
+    for side in ("live", "uat"):
+        try:
+            n = max(n, len(re.findall("^#[0-9]+", (W / "work" / slug / f"en-{side}.txt").read_text(encoding="utf8"), re.M)))
+        except OSError:
+            pass
+    return n
+
+
 pages, sigs = [], collections.defaultdict(list)
 for slug in slugs:
     f = json.load(open(W / "work" / slug / "findings.json", encoding="utf-8-sig"))
@@ -77,10 +89,11 @@ for slug in slugs:
         shots = {k: v for k, v in (i.get("shots") or {}).items() if (W / "reports" / v).exists()}
         issues.append(dict(id=i["id"], component=i["component"], kind=kind, issue=i["issue"], uat=i["uat"], live=i["live"],
                            cause=i.get("cause", ""), langs=[N2C[n] for n in i["languages"] if n in N2C], shots=shots,
-                           group="", also=[]))
+                           group="", also=[], signature=sg))
     pages.append(dict(slug=slug, label=label(slug), title=f.get("title", slug), uat=plan["uat"], live=plan["live"],
                       checked=[c for c, _ in LOC if c in plan["locales"]], issues=issues,
-                      not_issues=f.get("not_issues", []), couldnt_check=f.get("couldnt_check", []), updated=date))
+                      not_issues=f.get("not_issues", []), couldnt_check=f.get("couldnt_check", []), updated=date,
+                      version_mismatch=bool(f.get("version_mismatch"))))
 by = {p["slug"]: p for p in pages}
 shared = []
 for sg, refs in sigs.items():
@@ -105,12 +118,11 @@ data = dict(
            f"(source) returns 404; Target 404 means the internal page (target) returns 404."),
     heat_note=f"{n} issues across {len(pages)} pages. Locales with the most issues: {worst}." if n else "",
     built=date, pages=pages, shared=shared)
-t = (HERE / "template.html").read_text(encoding="utf8").replace("__TITLE__", a.title)
-t, k = re.subn(r'(<script type="application/json" id="data">).*?(</script>)',
-               lambda m: m.group(1) + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + m.group(2),
-               t, count=1, flags=re.S)
-assert k == 1
-(OUT / "index.html").write_text(t, encoding="utf8")
+data["packs"] = True
+data = tracker.upgrade(data, {p["slug"]: sections_of(p["slug"]) for p in pages})
+(OUT / "index.html").write_text(tracker.page_html(data, a.title), encoding="utf8")
+n_, types_, sev_, messy_ = tracker.summary(data)
+print("issue types", types_, "| severity", sev_, "| messy pages", len(messy_))
 
 # One base64 pack per page: 4-byte header length + JSON {path:[offset,length]} + JPEG bytes.
 # The artifact host caps one artifact at 512 files, and 1000+ screenshots would not fit as separate files.
