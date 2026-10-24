@@ -2,7 +2,7 @@
 from the work/<slug>/findings.json files that the uat-live-page-compare skill writes.
 
 Run from the project folder (the one that holds work/ and reports/):
-  py -3.13 <skill>/build.py --out artifact-NAME --title "Solutions pages QA log" \
+  py -3.12 <skill>/build.py --out artifact-NAME --title "Solutions pages QA log" \
       --heading "TeamViewer solutions pages: internal vs live" --prefix solutions [--exclude solutions]
   or  --slugs a,b,c   or  --slugs-file work/pairs.txt  (paths or URLs, one per line; slug = path minus locale)
 

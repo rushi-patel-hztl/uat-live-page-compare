@@ -1,8 +1,8 @@
 """Pack the results of a uat-live-page-compare run into one zip to send to a teammate (or to merge machines).
 
 Run from the project folder:
-  py -3.13 <skill>/export_run.py my-run.zip --slugs-file work/pairs.txt
-  py -3.13 <skill>/export_run.py my-run.zip --prefix solutions
+  py -3.12 <skill>/export_run.py my-run.zip --slugs-file work/pairs.txt
+  py -3.12 <skill>/export_run.py my-run.zip --prefix solutions
 Contains, for each page: work/<slug>/findings.json + plan.json, reports/<slug>.md, reports/screenshots/<slug>/.
 The receiver unzips it into their own project folder (same layout), then runs build.py over the combined pages.
 """

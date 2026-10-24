@@ -8,13 +8,14 @@ description: Turn uat-live-page-compare results (work/<slug>/findings.json and r
 Reads the findings that the `uat-live-page-compare` skill writes and builds the QA tracker artifact (the format described in `TRACKER_FORMAT.md` next to this file: issue types, severity, Messy alarms, fix-once groups, status/assignee/notes saved in the artifact's shared database). No Confluence involved.
 
 Files in this folder (`S/` below): `build.py`, `export_run.py`, `TRACKER_FORMAT.md` (the spec) and `tracker/` (`common.py` holds the kind, severity, type and Messy rules; `upgrade.py` turns any older QA-log page into this format; `src/head.html` and `src/app.js` are the page). `build.py` needs `pillow` for the screenshot packs.
-Run everything from the project folder (the one holding `work/` and `reports/`), with `py -3.13` on Windows.
+Run everything from the project folder (the one holding `work/` and `reports/`), with `py -3.12` on Windows.
+Reference artifact in this format: Remote batches 1-2 QA log, https://claude.ai/artifact/2DSkcyMwdFy5UufZDAEyhe?sk=uI9_djg1t2ArZUs9KM0spQ
 
 ## A. One person has all the results
 
 1. Pick the pages: `--prefix <slug-prefix>` (every slug in `work/_progress.json` starting with it), `--slugs a,b,c`, or `--slugs-file work/pairs.txt` (one URL or path per line; the last token is used, the locale segment is dropped, `/` becomes `-`). Leave out non-pages with `--exclude` (for example a path that redirects on both sides).
 2. Build:
-   `py -3.13 S/build.py --out artifact-NAME --title "Solutions pages QA log" --heading "TeamViewer solutions pages: internal vs live" --slugs-file work/pairs.txt --exclude solutions`
+   `py -3.12 S/build.py --out artifact-NAME --title "Solutions pages QA log" --heading "TeamViewer solutions pages: internal vs live" --slugs-file work/pairs.txt --exclude solutions`
    The title is the artifact name: two to four words, no colon-explainer. It prints page, issue and shared-group counts and writes `artifact-NAME/index.html`, `artifact-NAME/packs/<slug>.txt` and `artifact-NAME/publish_batches.json`.
 3. Review `index.html`'s JSON only if something looks off (labels come from the slug; the intro and the heat note are generated). Check the counts against the reports.
 4. Publish with the Artifact tool (load `artifact-design` and `artifact-capabilities` first, as the tool says):
@@ -22,14 +23,14 @@ Run everything from the project folder (the one holding `work/` and `reports/`),
    - Each further batch: same `file_path`, `url` = the artifact's URL, `root`, `files` = the next list. Files from earlier calls are kept.
    - To make a new artifact rather than update one, publish from a different folder (the same `file_path` always updates the existing artifact).
 5. `Artifact` action `open`, then report page/issue counts, how many pages are Messy, and that it is private until shared. Tell the team that status, assignee and notes are shared with everyone who can open the page and start empty.
-6. To bring an older QA-log artifact up to this format instead of rebuilding it, read it with the Artifact tool, run `py -3.13 S/tracker/upgrade.py <saved html> <out.html> [--title "Name"]` and publish `out.html` to the same artifact URL (screenshots and the link are kept). It also reads older pages that have no JSON data, through `tracker/static_import.py` (needs `beautifulsoup4`). To act on re-check requests, follow the `process-qa-rechecks` skill.
+6. To bring an older QA-log artifact up to this format instead of rebuilding it, read it with the Artifact tool, run `py -3.12 S/tracker/upgrade.py <saved html> <out.html> [--title "Name"]` and publish `out.html` to the same artifact URL (screenshots and the link are kept). It also reads older pages that have no JSON data, through `tracker/static_import.py` (needs `beautifulsoup4`). To act on re-check requests, follow the `process-qa-rechecks` skill.
 
 Why packs: one artifact holds at most 512 files, and a run has 1,000+ screenshots. `build.py` recompresses the screenshots to JPEG (1280px wide) and stores one base64 text file per page; the page (`data.packs` is true) fetches a page's pack when its first screenshot nears the viewport and shows the images from blob URLs. A page without that flag uses plain screenshot files and falls back to a pack if a file is missing. The host serves only standard types, so the packs are `.txt`, not `.bin` or `.zip`.
 
 ## B. Several people ran different URLs on their own machines
 
 Each teammate, after their `uat-live-page-compare` run, from their project folder:
-`py -3.13 S/export_run.py my-run.zip --slugs-file work/pairs.txt` (or `--prefix ...`). It zips each page's `findings.json`, `plan.json`, report and screenshots. Send the zip to whoever builds the artifact.
+`py -3.12 S/export_run.py my-run.zip --slugs-file work/pairs.txt` (or `--prefix ...`). It zips each page's `findings.json`, `plan.json`, report and screenshots. Send the zip to whoever builds the artifact.
 
 The builder unzips every teammate's zip into the same project folder (the layout is identical, slugs do not clash if the URLs differ), puts all URLs into one `work/pairs-all.txt`, and runs step 2 onwards of section A. If two people ran the same page, keep the newer `findings.json` and delete the other's `reports/screenshots/<slug>/` first, so old screenshots do not mix in.
 
