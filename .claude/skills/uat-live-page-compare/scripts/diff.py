@@ -8,7 +8,8 @@ inside them, each clicked tab and expanded accordion item), and writes:
   <dir>/diff.md    readable leads, grouped across locales (same values = one lead)
   <dir>/diff.json  the same as data
 Leads are candidates, not findings: confirm each on screen before reporting.
-The standing exclusions (font size/weight, #2D2D2D vs #545454 body text,
+The standing exclusions (font size/weight, #2D2D2D vs #545454 or #050A52
+body text, #050A52 vs #141414 heading/title text,
 lang code variants, RU -> ru-cis redirect, card/column widths, CTA widths,
 spacing <= 2px, header top-bar links #050A52 vs #141414, the UAT-only "Company"
 header link) are applied here so they never show up as leads.
@@ -24,7 +25,9 @@ LOCALES = ["EN", "DE", "FR", "ES", "JA", "PT", "CN", "HU", "IT", "KO", "NL", "PL
 NAMES = {"EN": "English", "DE": "German", "FR": "French", "ES": "Spanish", "JA": "Japanese", "PT": "Portuguese",
          "CN": "Chinese (Simplified)", "HU": "Hungarian", "IT": "Italian", "KO": "Korean", "NL": "Dutch",
          "PL": "Polish", "TH": "Thai", "RU": "Russian", "CS": "Czech", "TW": "Chinese (Traditional)", "TR": "Turkish"}
-IGNORED_COLOURS = {("#2D2D2D", "#545454")}  # accepted body text colour (UAT, live)
+IGNORED_COLOURS = {("#2D2D2D", "#545454"),  # accepted body text colour (UAT, live)
+                   ("#2D2D2D", "#050A52"),  # accepted body text: UAT dark grey, live navy
+                   ("#050A52", "#141414")}  # accepted heading/title: UAT navy, live near-black
 IGNORED_HEADER_COLOURS = {("#050A52", "#141414")}  # accepted header top-bar link colour (UAT, live)
 EXPECTED_HEADER_EXTRA = {"company"}  # header links that are on UAT only by design
 NON_LATIN = {"JA": r"[぀-ヿ一-鿿]", "CN": r"[一-鿿]", "TW": r"[一-鿿]",

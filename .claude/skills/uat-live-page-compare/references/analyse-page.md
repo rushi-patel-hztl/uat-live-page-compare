@@ -35,7 +35,9 @@ stop and return what you have.
 - **Drop** leads that are noise: carousel/slider controls ("Go to slide 2"),
   rotating testimonials or logos, text that only moved, heading-pairing
   mix-ups (one extra block shifting the pairs), near-identical colours
-  that are the accepted #2D2D2D/#545454 body text, and anything under the
+  that are the accepted #2D2D2D/#545454 body text, body text #2D2D2D (UAT)
+  vs navy #050A52 (live), heading/card-title #050A52 (UAT) vs #141414
+  (live), a heading level that differs on its own (H5 vs H3), and anything under the
   ground rules below.
 - **`bgimg` and `bg` leads, and block heights, are often wrong**: confirm on
   screen before keeping them.
@@ -78,8 +80,11 @@ stop and return what you have.
   is expected behaviour, not an issue. Only one side 404 or only one side
   301/302 is an issue with no comparison for that locale (give the
   redirect destination). Internal loads but live redirects elsewhere: don't
-  validate, only report where live goes. Drop every other lead for those
-  locales.
+  validate, only report where live goes. Both sides redirecting is only
+  expected when both end on the same working page: if UAT's redirect ends on
+  a 404 or another page, that's an issue (give the whole chain). A capture
+  `ERR_HTTP_RESPONSE_CODE_FAILURE` means the page answered 404, not a capture
+  fault. Drop every other lead for those locales.
 - **Locale leads** (status differs, wrong language, unlisted locale) are
   always issues if real.
 - **Dropdowns, videos, anchor links, CTA redirection**: the capture does not
@@ -151,6 +156,12 @@ Write `work/<slug>/findings.json` (UTF-8):
  "couldnt_check": ["Form submission not tested."]}
 ```
 
+- *signature*: for recurring faults use the fixed keys from SKILL.md
+  ("Use these fixed signatures"): `hdrnav:0:items`, `hdrnav:1:items`,
+  `uat-404-locales`, `uat-content-empty`, `header-cta-404`, `accordion-hash`,
+  `tab-url-query`, `heading-h2-no-h1`. Never invent a new name for one of
+  these, or the cross-page roll-up misses it.
+
 - Languages as names: English, German, French, Spanish, Japanese, Portuguese,
   Chinese (Simplified), Hungarian, Italian, Korean, Dutch, Polish, Thai,
   Russian, Czech, Chinese (Traditional), Turkish.
@@ -201,7 +212,8 @@ only as deferred tools, load them with `ToolSearch` first. Call
 - Tabs, accordions and the header: `issue-checklist.md` sections 10-12 list
   what was found before (colours, panel gap, deep-link query/hash, menu
   collapse) and what is not an issue.
-- Never report font size or font weight; body text #2D2D2D vs #545454;
+- Never report font size or font weight; body text #2D2D2D vs #545454 or
+  #050A52; heading/title text #050A52 vs #141414; heading level on its own;
   lang code variants of the same language; live /ru/ → /ru-cis/; card,
   column or CTA width on its own; spacing differences of 2px or less; links
   that end on the same page.

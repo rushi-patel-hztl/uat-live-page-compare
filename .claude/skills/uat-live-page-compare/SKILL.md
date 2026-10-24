@@ -180,6 +180,16 @@ When everything is done (or the user stops):
   and the Confluence index page by `report.py common`, which matches issues by
   their `signature`. Give an issue the diff lead's `sig` whenever it came from
   a lead, so the same fault on different pages groups together.
+- **Use these fixed signatures** for faults that recur across pages, even when
+  you found them without a lead (in an earlier run, workers made up their own
+  names, and the roll-up missed the same header fault on 8 pages):
+  `hdrnav:0:items` (main menu differs), `hdrnav:1:items` (second menu row
+  differs or shows raw slugs), `uat-404-locales` (UAT 404 where live loads,
+  any number of locales), `uat-content-empty` (UAT loads but its components
+  are empty), `header-cta-404` (header CTA ends on a 404 page),
+  `accordion-hash` (expanding an item doesn't set the URL hash),
+  `tab-url-query` (clicking a tab doesn't set the URL query),
+  `heading-h2-no-h1` (page has no H1).
 
 ## Status rules: 404, 301 and redirects (decide first, per locale)
 
@@ -193,6 +203,7 @@ and final URL from the coverage table in `diff.md` (or `browse.py`).
 | 301 / 302 | 301 / 302 | **Expected behaviour.** Not an issue; list both destinations (a 301 on one side and a 302 on the other still counts). |
 | 301 / 302 | no redirect (or the reverse) | **Issue.** Report it with where the 301/302 goes, **no comparison**. |
 | loads | redirects to another page | **Don't validate.** Only report where live redirects to. |
+| redirects, ends on a 404 (or another page) | loads, or redirects to a working page | **Issue.** Report the whole redirect chain and the final status (e.g. `302 → /apac/overview → 301 → 404`), **no comparison**. Both sides redirecting is only expected when both end on the same working page. |
 
 Only locales where both sides load the same page get the full comparison.
 
@@ -252,7 +263,10 @@ on screen with `browse.py` (a `js` expression per page) for every locale.
 - Tabs and accordions: report when clicking a tab or expanding an item sets
   a URL query or hash on live but not on UAT (or a different one).
 - **Never report font size or font weight differences.**
-- Never report body text #2D2D2D (UAT) vs #545454 (live).
+- Never report body text #2D2D2D (UAT) vs #545454 or #050A52 (live).
+- Never report heading/title text #050A52 navy (UAT) vs #141414 near-black
+  (live), e.g. card titles, nor a heading level difference on its own
+  (H5 vs H3). Both were confirmed false alarms.
 - Never report `<html lang>` code variants of the same language (`zh` vs
   `zh-CN`, `zh-TW` vs `zh-HK`). Do report content in the wrong language.
 - Never report live `/ru/` → `/ru-cis/` vs internal `/ru/`. Compare RU content
@@ -330,6 +344,16 @@ component missing or additional, search the other side for it (SKILL.md,
   after opening, so a missing thumbnail in a shot is not an issue until checked.
 - The sites may reset connections after many loads (`ERR_CONNECTION_RESET`,
   `ERR_ABORTED`); retry with `--concurrency 1`.
+- `FAILED: … ERR_HTTP_RESPONSE_CODE_FAILURE` in the capture log is the UAT
+  page answering 404 (or another error status), not a capture fault. Read the
+  coverage table in `diff.md` and apply the status rules; don't re-capture.
+- On uat-sitecore.teamviewer.com, pages that aren't published in a language
+  return 404, or load with empty components, in most locales other than EN
+  and DE. Report each as one issue per page (`uat-404-locales`,
+  `uat-content-empty`) listing the locales, not one issue per locale.
+- Seen on uat-sitecore: the header "Try now for free" CTA links to
+  `/en/sitecore/` (404), and the second menu row shows raw slugs (`remote`,
+  `add-ons`, …) in alphabetical order. Expect these on most product pages.
 
 `R/issue-checklist.md` lists the typical issue types, likely causes
 and owners; sections 10-12 cover tabs, accordions and the header.

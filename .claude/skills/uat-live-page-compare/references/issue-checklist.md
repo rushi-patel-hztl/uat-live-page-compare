@@ -164,6 +164,12 @@ sign in) are skipped. Mega menus are not opened.
 Never report: the top bar (contact sales, phone, sign in, "Company"), the
 destinations of menu items, or the menu collapsing below 1440px.
 
+Accepted colour and heading differences anywhere on the page (confirmed false
+alarms, never report them): body text #2D2D2D on UAT vs #545454 or navy #050A52
+on live (e.g. hero body text); heading or card-title text navy #050A52 on UAT
+vs near-black #141414 on live (e.g. integration card titles); a heading level
+that differs on its own (H5 on UAT vs H3 on live).
+
 ## 13. Status: 404, 301 and redirects
 
 Decide this first, per locale (SKILL.md "Status rules").
@@ -175,6 +181,8 @@ Decide this first, per locale (SKILL.md "Status rules").
 | 301 or 302 on both sides | Expected behaviour, not an issue (list destinations) | n/a |
 | 301 or 302 on one side only | Issue with the redirect destination, no comparison | DEV (redirect rule) or Content / Manual |
 | Live redirects to another page, internal loads | Don't validate; report only where live redirects to | Needs discussion |
+| Internal redirects and ends on a 404 or a different page, live loads or ends on a working page (seen: `/products/remote/pricing` → 302 `/apac/overview` → 301 → 404) | Issue: give the full chain, no comparison | DEV (redirect rule) |
+| `ERR_HTTP_RESPONSE_CODE_FAILURE` in the capture log | The page answered 404 or another error status; read the coverage table | n/a |
 
 ## 14. CTA redirection and dropdowns
 
