@@ -43,7 +43,7 @@ def upgrade(d, sections=None):
             i['ui'] = is_ui(i['kind'], i['sig'])
             i['quick'] = 'Unpublish in Sitecore' if i['kind'] == 'Source 404' or i['sig'] == 'faq-extra-locales' else ''
             i['rc'] = ''
-            i['types'] = types_of(i['kind'], i['ui'], i['issue'] + ' | ' + i['uat'], i['component'], i['sig'])
+            i['types'] = types_of(i['kind'], i['ui'], i['issue'] + ' | ' + i['uat'], i['component'], i['sig'], i['live'])
         p['messy'] = messy_check(p['issues'], (sections or {}).get(p['slug'], 0), bool(p.get('version_mismatch')))
         p.setdefault('not_issues', []); p.setdefault('couldnt_check', [])
     by = {p['slug']: p for p in d['pages']}

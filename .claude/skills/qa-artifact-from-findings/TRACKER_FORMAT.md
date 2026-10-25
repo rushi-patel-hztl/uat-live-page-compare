@@ -26,7 +26,9 @@ An issue can carry several. Order in the filter:
 | Duplicated Component | A component or the page blocks repeat on UAT (Blocker) |
 | Header | Anything about the header component (menu labels, order, header CTA) |
 | Missing Image | An image, icon, logo or badge is missing or broken |
-| UI | Pure styling or layout: colour, background, alignment, layout, spacing, icon or badge size, corners, accordion or CTA style |
+| UI | Pure styling or layout: background, borders, alignment, layout, spacing, icon or badge size, corners, accordion or CTA style |
+| Font Colour | The colour of text: titles, headings, labels, links, body copy. An issue that also changes background, border, spacing, alignment, size or layout carries UI as well |
+| Font Size | The size of text differs by more than 2px (an issue whose px values differ by 2px or less is not tagged). Always listed in the filter, even with no issues. The compare skill's own font size rule is unchanged |
 | Other | Everything else (links, URL hash, dropdowns, locale redirects, ...) |
 
 The rules are in `tracker/common.py` (`norm_kind`, `severity`, `is_ui`, `types_of`). Worker rules for choosing the `kind` are in the `uat-live-page-compare` skill (SKILL.md, "Naming missing things" and "Page versions that differ").

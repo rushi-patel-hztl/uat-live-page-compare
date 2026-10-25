@@ -32,7 +32,8 @@ const bar = (c, n) => `<div class="bar" role="img" aria-label="${c.Fixed} of ${n
 $("#heading").textContent = D.heading;
 $("#intro").textContent = D.intro;
 const langsHit = new Set(all.flatMap((i) => i.langs));
-const kindsAll = D.type_order.filter((t) => all.some((i) => i.types.includes(t)));
+const ALWAYS_LISTED = ["Font Size"];  // shown in the type filter even when no issue has it yet
+const kindsAll = D.type_order.filter((t) => ALWAYS_LISTED.includes(t) || all.some((i) => i.types.includes(t)));
 const selKinds = new Set(kindsAll);
 const issueOf = (s, id) => bySlug[s].issues.find((x) => x.id === id);
 const cls = (n) => n === 0 ? "" : n === 1 ? "h1" : n <= 3 ? "h2" : n <= 6 ? "h3" : "h4";
@@ -129,7 +130,7 @@ function renderSummary() {
       <p class="fixline"><span class="fix">Fix in: ${esc(g.fix)}</span>${esc(g.note)}</p>
       <div class="refs">${refs.map(([s, id]) => `<button data-go="${esc(s)}" data-id="${id}">${esc(bySlug[s].label)} #${id}</button>`).join(" · ")}</div>
       <span class="gp">${gc.Fixed} of ${g.refs.length} issues fixed</span></div>
-    <div class="chips"><span class="sev ${top}">${top}</span>${g.types.map((t) => `<span class="kind${t === "UI" ? " ui" : ""}">${esc(t)}</span>`).join("")}</div>
+    <div class="chips"><span class="sev ${top}">${top}</span>${g.types.map((t) => `<span class="kind${t === "UI" || t === "Font Colour" || t === "Font Size" ? " ui" : ""}">${esc(t)}</span>`).join("")}</div>
     ${workHtml("groups", g.id, true, g.refs.length)}</div>`;
   }).join("");
   $("#shared").querySelectorAll(".work").forEach(syncWork);
@@ -174,7 +175,7 @@ function issueHtml(p, i) {
   const shots = shot("uat", "UAT") + shot("live", "Live");
   const d = T.issues[i.key], sev = (d && d.sev) || i.sev;
   return `<article class="issue s-${SC[st(d)]}" id="${esc(p.slug)}-${i.id}"><span class="num">#${i.id}</span><div class="body">
-    <div class="meta">${i.messy ? `<span class="messy-pill tag">Messy</span>` : ""}${i.quick ? `<span class="quick" title="Live has no such page, so removing it from UAT clears this issue">Quick fix: ${esc(i.quick)}</span>` : ""}<span class="sev ${sev}">${sev}</span>${RC[i.rc] ? `<span class="rcc ${i.rc}">${RC[i.rc]}</span>` : ""}${i.types.map((t) => `<span class="kind${t === "UI" ? " ui" : ""}">${esc(t)}</span>`).join("")}<span>${esc(i.component)}</span></div>
+    <div class="meta">${i.messy ? `<span class="messy-pill tag">Messy</span>` : ""}${i.quick ? `<span class="quick" title="Live has no such page, so removing it from UAT clears this issue">Quick fix: ${esc(i.quick)}</span>` : ""}<span class="sev ${sev}">${sev}</span>${RC[i.rc] ? `<span class="rcc ${i.rc}">${RC[i.rc]}</span>` : ""}${i.types.map((t) => `<span class="kind${t === "UI" || t === "Font Colour" || t === "Font Size" ? " ui" : ""}">${esc(t)}</span>`).join("")}<span>${esc(i.component)}</span></div>
     <h3>${esc(i.issue)}</h3>
     <div class="vals"><div><span class="k u">UAT</span>${esc(i.uat)}</div><div><span class="k l">Live</span>${esc(i.live)}</div></div>
     <div class="langs">${codes.filter((c) => p.checked.includes(c)).map((c) => i.langs.includes(c)

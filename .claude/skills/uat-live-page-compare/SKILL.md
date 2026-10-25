@@ -298,7 +298,10 @@ its own, even when it is also a styling difference.
 **UI tag.** Pure styling and layout differences (colour, background, alignment,
 layout, spacing, icon or badge size, image corners, accordion or CTA style) are
 tagged UI by the QA tracker so the migration team can hide them and work on
-the rest. Use one of the kinds `UI`, `Colour`, `Background`, `Alignment`,
+the rest. Text colour differences (titles, headings, labels, links, body copy)
+are tagged Font Colour instead, or as well when the same issue also changes
+background, border, spacing or layout; say "text colour" or "title colour" in
+the issue sentence so the tracker can tell. Use one of the kinds `UI`, `Colour`, `Background`, `Alignment`,
 `Layout`, `Spacing / heading`, `Accordion style` for them. Broken or different
 images (an asset problem) and anything about content, links or structure are
 not UI. Before calling a

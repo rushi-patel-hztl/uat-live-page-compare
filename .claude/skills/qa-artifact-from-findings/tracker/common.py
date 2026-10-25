@@ -39,16 +39,37 @@ UI_SIGS = {"cards-icon-size","awards-badge-size","cta-explore-style","hero-image
 UI_WORDS = ("colour","color","spacing","layout","align","background","style")
 def is_ui(kind, sig): return kind in UI_KINDS or sig in UI_SIGS or kind == "UI" or any(w in kind.lower() for w in UI_WORDS)
 import re
-TYPE_ORDER = ["Source 404","Target 404","EN Fallback","Content Missing","Component Missing","Additional Component","Duplicated Component","Header","Missing Image","UI","Other"]
+TYPE_ORDER = ["Source 404","Target 404","EN Fallback","Content Missing","Component Missing","Additional Component","Duplicated Component","Header","Missing Image","UI","Font Colour","Font Size","Other"]
+# Font Size: the size of text differs by more than 2px (e.g. 16px vs 20px). Only tags issues already reported;
+# the compare skill's own rules on font size are unchanged. Other styling in the same issue keeps UI as well.
+FONT_SIZE_RX = re.compile(r"\bfont[- ]sizes?\b|\b(text|font|type|heading|title|label|copy|eyebrow|subtitle|subheading)s?\b[^.;]{0,30}\b(size[sd]?|smaller|larger|bigger)\b"
+                          r"|\b(smaller|larger|bigger)\b[^.;]{0,15}\b(text|font|heading|title|label)s?\b", re.I)
+PX_RX = re.compile(r"(\d+(?:\.\d+)?)\s*px", re.I)
+def font_size_over_2px(*texts):
+    """True unless the issue's px values show a difference of 2px or less (no values: trust the wording)."""
+    px = [float(v) for s in texts for v in PX_RX.findall(s or "")]
+    return len(px) < 2 or max(px) - min(px) > 2
+# Font Colour: the colour of text (titles, headings, labels, links, body copy). An issue that also changes
+# background, border, spacing, alignment, size or layout keeps UI as well.
+FONT_RX = re.compile(r"\b(text|title|heading|label|link|subtitle|subheading|eyebrow|copy|font)s?\b[^.;]{0,50}\b(colou?rs?|navy|grey|gray|blue|black|white|near-black)\b"
+                     r"|\bcolou?rs?\b[^.;]{0,25}\b(text|title|heading|label|link|font)s?\b", re.I)
+NON_FONT_UI_RX = re.compile(r"\b(background|bg|border|fill(ed)?|spacing|gap|align(ed|ment)?|centred|centered|layout|radius|corners?|size|divider|line|rule|outline|shadow|width|height|theme|banner|strip)\b", re.I)
 IMG_RX = re.compile(r"((image|icon|logo|badge|thumbnail|picture|photo)s?[^.;]{0,45}(missing|broken|not (load|shown|displayed|render)|absent|no longer|without)|(missing|broken|absent)[^.;]{0,35}(image|icon|logo|badge|thumbnail)s?|no (check |cross )?(image|icon)s?)", re.I)
 def is_header(kind, component, sig): return kind.lower().startswith("header") or component.lower().startswith("header") or (sig or "").lower().startswith("header")
-def types_of(kind, ui, text, component="", sig=""):
+def types_of(kind, ui, text, component="", sig="", live=""):
     """Filterable issue types: the meaningful ones only; an issue can carry several."""
     t = []
     if kind in ("Source 404","Target 404","EN Fallback","Content Missing","Component Missing","Additional Component"): t.append(kind)
     if kind == "Duplicated component": t.append("Duplicated Component")
     if is_header(kind, component, sig): t.append("Header")
-    if ui: t.append("UI")
+    sentence = text.split(" | ")[0]
+    fsize = bool(FONT_SIZE_RX.search(sentence)) and font_size_over_2px(text, live)
+    if ui or fsize:
+        rest = FONT_SIZE_RX.sub(" ", sentence) if fsize else sentence
+        colour = ui and FONT_RX.search(sentence)
+        if ui and ((not colour and not fsize) or NON_FONT_UI_RX.search(rest)): t.append("UI")
+        if colour: t.append("Font Colour")
+        if fsize: t.append("Font Size")
     if IMG_RX.search(text): t.append("Missing Image")
     return t or ["Other"]
 def severity(kind, sig):
@@ -102,5 +123,7 @@ FIX_BY_TYPE = {
  "Missing Image": ("Content / media", "A media item is missing or not published. Re-link or publish it."),
  "Header": ("Content / config", "Header menu labels, order or the header CTA differ. Update the menu item titles and the header CTA in the shared header settings."),
  "UI": ("Component", "Styling or layout differs in a shared component. Fix it once in the component styles."),
+ "Font Colour": ("Component", "Text colour differs from live. Fix the colour token or text style in the shared component."),
+ "Font Size": ("Component", "Text size differs from live by more than 2px. Fix the type scale or text style in the shared component."),
  "Other": ("Component / content", "Check the components and content listed on each page."),
 }
