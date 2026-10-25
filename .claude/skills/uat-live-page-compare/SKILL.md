@@ -239,13 +239,27 @@ on screen with `browse.py` (a `js` expression per page) for every locale.
     text, final destination after redirects, new tab.
   - Never report the top-bar utility links (contact sales, phone, sign in,
     "Company"). The footer is out of scope.
+  - The header CTA design differs by design: UAT `#050A52` text, transparent,
+    1px `#050A52` border, 8px radius vs live `#050A52` text, `#FFFFFF`, 1px
+    `#3056EF` border, 4px radius (e.g. "Request a trial", "Start free trial").
+    Never report that style difference; still report a CTA on one side only,
+    different text or a different destination.
 - Tabs and accordions: report when clicking a tab or expanding an item sets
   a URL query or hash on live but not on UAT (or a different one).
 - **Never report font size or font weight differences.**
 - Never report body text #2D2D2D (UAT) vs #545454 or #050A52 (live).
 - Never report heading/title text #050A52 navy (UAT) vs #141414 near-black
-  (live), e.g. card titles, nor a heading level difference on its own
-  (H5 vs H3). Both were confirmed false alarms.
+  (live), e.g. feature card titles, nor accordion/FAQ item titles #050A52
+  (UAT) vs #141414 or #000000 (live), nor a heading level difference on its
+  own (H5 vs H3). Navy is the expected title colour, so these are false alarms.
+- Never report tab label colours: UAT active #3056EF / inactive #27272A
+  (or #474747) vs live navy #050A52 / #545454 is expected per design.
+- Never report a missing divider above the first accordion row (UAT has
+  none, live has a 1px line): expected per design.
+- **Exception: navy on a dark background.** Where a navy #050A52 title sits
+  on a dark background, it must pass WCAG AA contrast (4.5:1, or 3:1 for
+  large text: 24px+, or 18.66px+ bold). Report it as kind `Accessibility`
+  with the ratio, e.g. `#050A52 on #141F6B (1.2:1)` vs `AA 4.5:1`.
 - Never report `<html lang>` code variants of the same language (`zh` vs
   `zh-CN`, `zh-TW` vs `zh-HK`). Do report content in the wrong language.
 - Never report live `/ru/` → `/ru-cis/` vs internal `/ru/`. Compare RU content

@@ -31,7 +31,7 @@ from pathlib import Path
 
 ROOT = Path.cwd()
 WORK, REPORTS = ROOT / "work", ROOT / "reports"
-EXCLUDED = ("header top-bar links (the menu items and header CTA are checked, at 1440px), mega-menu contents, footer, font size, font weight, body text #2D2D2D vs #545454 or #050A52, heading/title text #050A52 vs #141414, heading level (H3 vs H5) on its own, lang code variants, "
+EXCLUDED = ("header top-bar links (the menu items and header CTA are checked, at 1440px), mega-menu contents, footer, font size, font weight, body text #2D2D2D vs #545454 or #050A52, heading/title text #050A52 vs #141414 or #000000 (unless it fails WCAG AA on a dark background), the expected header CTA design (outlined navy r=8 vs white with a blue border r=4), tab label colours (#3056EF active on UAT), no divider above the first accordion row, heading level (H3 vs H5) on its own, lang code variants, "
             "the RU → ru-cis redirect, card/column widths on their own, and links that reach the same page")
 COLS = ["#", "Languages", "Component", "Issue", "UAT", "Live", "UAT screenshot", "Live screenshot",
         "Likely cause", "Suggested owner", "User to confirm"]

@@ -110,7 +110,6 @@ panel's own `· T / CTA / IMG / TXT` lines).
 
 | Look for | Usual cause | Owner |
 |---|---|---|
-| Active / inactive tab label colour differs (seen: UAT #3056EF / #27272A, live #050A52 / #545454) | Tab component theme | DEV |
 | Heading inside the tab panel centred on one side, left on the other | Alignment style id not mapped | Migration |
 | Heading inside the panel is a different level (H2 vs H3): the panel lands in another block | Heading level option not mapped | Migration |
 | Tab does not switch when clicked on UAT | Tab script / component bug | DEV |
@@ -118,7 +117,8 @@ panel's own `· T / CTA / IMG / TXT` lines).
 | Different tab open on load, or the page's `?tab=` query not honoured | Default tab setting / query handling | Content / Manual, or DEV |
 | Panel content, CTAs or images differ for one tab only | That tab's datasource or language version | Content / Manual |
 
-Not issues: both sides setting the same `?tab=` value; the site scrolling to the
+Not issues: active / inactive tab label colour (UAT #3056EF / #27272A or
+#474747, live #050A52 / #545454), expected per design; both sides setting the same `?tab=` value; the site scrolling to the
 tabs on load when the URL has `?tab=` (capture resets the scroll).
 
 ## 11. Accordions
@@ -129,7 +129,6 @@ the capture: open the tab first (`"open": ["<tab>", "<item>"]` in shots.json).
 
 | Look for | Usual cause | Owner |
 |---|---|---|
-| Item title colour differs (seen: UAT #050A52, live #000000) | Accordion component theme | DEV |
 | Large gap between an expanded item's title and its content (seen: 88-114px vs 16px) | Component CSS | DEV |
 | Inline links in the item's rich text coloured (seen: UAT #3056EF, live #141414) | RTE link style | DEV |
 | `url=` after expanding: live adds a hash (e.g. `#multipleaccordion-…-item-…`) that re-opens the item when the link is loaded, UAT adds none | Accordion deep-link not implemented | DEV |
@@ -139,7 +138,10 @@ the capture: open the tab first (`"open": ["<tab>", "<item>"]` in shots.json).
 | Item CTAs open in the same tab where live uses a new tab (`target=_blank`) | Link target not migrated | Migration |
 | Item missing / extra, or open on load on one side only | Item not migrated / default-expanded setting | Content / Manual |
 
-Not issues: "(Opens in a new tab)" screen-reader text (1x1px) after links;
+Not issues: no divider above the first item on UAT where live has a 1px line
+(expected per design); item title colour navy #050A52 on UAT vs #141414 or #000000 (FAQ)
+on live (expected title colour; only report it if it fails WCAG AA on a dark
+background); "(Opens in a new tab)" screen-reader text (1x1px) after links;
 video thumbnails that lazy-load more slowly but appear; live CTAs pointing to a
 step anchor (`#schritt-2`) of the same article UAT links to (same final page:
 list under "Possibly not an issue").
@@ -158,17 +160,26 @@ sign in) are skipped. Mega menus are not opened.
 | Menu items in a different order | Item sort order in the CMS | Content / Manual |
 | Second menu row (section navigation) on one side only | Context / secondary navigation not configured | DEV, or Content / Manual |
 | Header CTA (Download, Book a demo, Beratungstermin vereinbaren) on one side only | Header CTA not configured / not migrated | Content / Manual |
-| Header CTA style or text differs | Button variant not mapped | Migration |
+| Header CTA text differs, or a style other than the expected design below | Button variant not mapped | Migration |
 | Header CTA ends on a different page, or opens in a new tab on one side only | Link not updated / target not migrated | Content / Manual |
 
 Never report: the top bar (contact sales, phone, sign in, "Company"), the
-destinations of menu items, or the menu collapsing below 1440px.
+destinations of menu items, the menu collapsing below 1440px, or the header
+CTA design difference that is expected per design ("Request a trial", "Start
+free trial"): UAT #050A52 text, transparent, 1px #050A52 border, 8px radius vs
+live #050A52 text, #FFFFFF, 1px #3056EF border, 4px radius.
 
 Accepted colour and heading differences anywhere on the page (confirmed false
 alarms, never report them): body text #2D2D2D on UAT vs #545454 or navy #050A52
 on live (e.g. hero body text); heading or card-title text navy #050A52 on UAT
-vs near-black #141414 on live (e.g. integration card titles); a heading level
-that differs on its own (H5 on UAT vs H3 on live).
+vs near-black #141414 on live (e.g. integration and feature card titles);
+accordion/FAQ item titles navy #050A52 on UAT vs #141414 or #000000 on live; a
+heading level that differs on its own (H5 on UAT vs H3 on live). Navy is the
+expected title colour, **except on a dark background**: there it must pass
+WCAG AA (4.5:1, or 3:1 for large text, 24px+ or 18.66px+ bold). Report a
+navy title that fails as kind `Accessibility` with the contrast ratio
+(owner: DEV, cause: component theme not switching to the light title colour on
+dark backgrounds).
 
 ## 13. Status: 404, 301 and redirects
 

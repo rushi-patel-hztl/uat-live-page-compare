@@ -39,7 +39,10 @@ stop and return what you have.
   mix-ups (one extra block shifting the pairs), near-identical colours
   that are the accepted #2D2D2D/#545454 body text, body text #2D2D2D (UAT)
   vs navy #050A52 (live), heading/card-title #050A52 (UAT) vs #141414
-  (live), a heading level that differs on its own (H5 vs H3), and anything under the
+  (live), accordion/FAQ titles #050A52 (UAT) vs #141414 or #000000 (live),
+  the expected header CTA design (UAT outlined navy r=8 vs live white with a
+  #3056EF border r=4), tab label colours (UAT active #3056EF / inactive
+  #27272A vs live navy / grey), no divider above the first accordion row, a heading level that differs on its own (H5 vs H3), and anything under the
   ground rules below.
 - **`bgimg` and `bg` leads, and block heights, are often wrong**: confirm on
   screen before keeping them.
@@ -197,7 +200,10 @@ Then `py -3.13 S/report.py page <slug>`. It prepends a dated section to
   what was found before (colours, panel gap, deep-link query/hash, menu
   collapse) and what is not an issue.
 - Never report font size or font weight; body text #2D2D2D vs #545454 or
-  #050A52; heading/title text #050A52 vs #141414; heading level on its own;
+  #050A52; heading/title text #050A52 vs #141414 (accordion/FAQ titles also
+  vs #000000), but keep `Accessibility` leads where navy fails WCAG AA on a
+  dark background; the expected header CTA design; tab label colours; no
+  divider above the first accordion row; heading level on its own;
   lang code variants of the same language; live /ru/ → /ru-cis/; card,
   column or CTA width on its own; spacing differences of 2px or less; links
   that end on the same page.

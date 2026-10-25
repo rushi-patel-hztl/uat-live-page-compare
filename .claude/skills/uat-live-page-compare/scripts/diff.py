@@ -9,10 +9,13 @@ inside them, each clicked tab and expanded accordion item), and writes:
   <dir>/diff.json  the same as data
 Leads are candidates, not findings: confirm each on screen before reporting.
 The standing exclusions (font size/weight, #2D2D2D vs #545454 or #050A52
-body text, #050A52 vs #141414 heading/title text,
+body text, #050A52 vs #141414 heading/title text, #050A52 vs #000000 accordion/FAQ
+titles, tab label colours (UAT active #3056EF, inactive #27272A), the "Request a trial" header CTA design (UAT outlined navy r=8 vs live white
+with a blue border r=4),
 lang code variants, RU -> ru-cis redirect, card/column widths, CTA widths,
 spacing <= 2px, header top-bar links #050A52 vs #141414, the UAT-only "Company"
-header link) are applied here so they never show up as leads.
+header link) are applied here so they never show up as leads. Navy #050A52 titles
+on UAT are still flagged when they fail WCAG AA contrast on a dark background.
 """
 import json
 import re
@@ -27,8 +30,16 @@ NAMES = {"EN": "English", "DE": "German", "FR": "French", "ES": "Spanish", "JA":
          "PL": "Polish", "TH": "Thai", "RU": "Russian", "CS": "Czech", "TW": "Chinese (Traditional)", "TR": "Turkish"}
 IGNORED_COLOURS = {("#2D2D2D", "#545454"),  # accepted body text colour (UAT, live)
                    ("#2D2D2D", "#050A52"),  # accepted body text: UAT dark grey, live navy
-                   ("#050A52", "#141414")}  # accepted heading/title: UAT navy, live near-black
+                   ("#050A52", "#141414"),  # accepted heading/title: UAT navy, live near-black
+                   ("#050A52", "#000000")}  # accepted accordion/FAQ item title: UAT navy, live black
+NAVY = "#050A52"  # accepted UAT title colour, but it must still pass WCAG AA on the background it sits on
+AA_MIN = 4.5  # WCAG AA contrast for normal text (large text needs 3:1: confirm the size on screen)
 IGNORED_HEADER_COLOURS = {("#050A52", "#141414")}  # accepted header top-bar link colour (UAT, live)
+# Header CTA styles that differ by design (UAT, live), e.g. "Request a trial": UAT outlined navy r=8, live white r=4
+EXPECTED_HEADER_CTA_STYLES = {("#050A52 on none border=1#050A52 r=8", "#050A52 on #FFFFFF border=1#3056EF r=4")}
+# Tab label colours that differ by design (UAT, live): active, then inactive. Also applied to plain
+# links styled as tabs without role=tab (e.g. Customer success: Philips | Doro | ...).
+TAB_LABEL_COLOURS = {("#3056EF", "#050A52"), ("#27272A", "#545454"), ("#474747", "#545454")}
 EXPECTED_HEADER_EXTRA = {"company"}  # header links that are on UAT only by design
 NON_LATIN = {"JA": r"[぀-ヿ一-鿿]", "CN": r"[一-鿿]", "TW": r"[一-鿿]",
              "KO": r"[가-힯]", "TH": r"[฀-๿]", "RU": r"[Ѐ-ӿ]"}
@@ -53,6 +64,29 @@ def page_text(d):
 
 def colour_ok(u, l):
     return u == l or (u, l) in IGNORED_COLOURS
+
+
+def contrast(fg, bg):
+    """WCAG contrast ratio of two #RRGGBB colours, or None when either is not a solid hex."""
+    def lum(c):
+        if not re.fullmatch(r"#[0-9A-F]{6}", c or ""):
+            return None
+        ch = [int(c[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        r, g, b = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in ch]
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    a, b = lum(fg), lum(bg)
+    if a is None or b is None:
+        return None
+    return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+
+
+def navy_aa(colour, bg, comp, key, add):
+    """The navy title colour is accepted only where it passes AA: flag it on a dark background."""
+    ratio = contrast(colour, bg) if colour == NAVY else None
+    if ratio is not None and ratio < AA_MIN:
+        add(f"aa:{key}:{colour}>{bg}", "Accessibility", comp,
+            f"Navy title fails WCAG AA on this background ({ratio:.1f}:1, needs {AA_MIN}:1; 3:1 if large text)",
+            f"{colour} on {bg}", "AA contrast (4.5:1)")
 
 
 def href_key(h):
@@ -128,7 +162,8 @@ def compare_locale(code, u, l, add):
                 "image" if ub["bgimg"] else "none", "image" if lb["bgimg"] else "none")
         if ub["gap"] is not None and lb["gap"] is not None and abs(ub["gap"] - lb["gap"]) > 2:
             add(f"gap:{li}:{ub['gap']}>{lb['gap']}", "Spacing", comp, "Gap below component differs", f"{ub['gap']}px", f"{lb['gap']}px")
-        compare_content(ub, lb, comp, str(li), add)
+        navy_aa(ub["headColor"], ub["bg"], comp, f"{li}:head", add)
+        compare_content(ub, lb, comp, str(li), add, ub["bg"])
     # Tabs, accordions and the header are paired across the whole page, not per block:
     # a heading of a different level on one side moves them into another block.
     compare_tab_groups(u, l, add)
@@ -136,9 +171,11 @@ def compare_locale(code, u, l, add):
     compare_header(u, l, add)
 
 
-def compare_content(ub, lb, comp, key, add):
+def compare_content(ub, lb, comp, key, add, bg=None):
     """Text colours, alignment, CTAs, images and text of a block, tab panel or accordion item."""
     uc = sorted({t["color"] for t in ub["texts"]}); lc = sorted({t["color"] for t in lb["texts"]})
+    if bg and NAVY in uc:
+        navy_aa(NAVY, bg, comp, f"{key}:text", add)
     uc_ = [c for c in uc if c not in lc and not any((c, x) in IGNORED_COLOURS for x in lc)]
     lc_ = [c for c in lc if c not in uc and not any((x, c) in IGNORED_COLOURS for x in uc)]
     if uc_ or lc_:
@@ -148,6 +185,8 @@ def compare_content(ub, lb, comp, key, add):
     if ua and la and ua[0] != la[0]:
         add(f"textalign:{key}:{ua[0]}>{la[0]}", "Alignment", comp, "Body text alignment differs", ua[0], la[0])
     lctas = {norm(c["text"]): c for c in lb["ctas"]}; uctas = {norm(c["text"]): c for c in ub["ctas"]}
+    # Tab labels differ by design (UAT active #3056EF / inactive #27272A, live navy / grey): no style lead for them.
+    tab_titles = {norm(t.lstrip("*"))[:30] for t in (ub.get("tabs") or []) + (lb.get("tabs") or [])}
     for k, lcta in lctas.items():
         ucta = uctas.get(k)
         if ucta is None:
@@ -155,7 +194,8 @@ def compare_content(ub, lb, comp, key, add):
                 add(f"ctamissing:{key}", "CTA", comp, f'CTA "{lcta["text"]}" missing on UAT', "-", lcta["text"])
             continue
         style = lambda c: f'{c["color"]} on {c["bg"]} border={c["border"]} r={c["r"]}{" icon" if c["icon"] else ""}{" PLAIN" if c["plain"] else ""}'
-        if style(ucta) != style(lcta):
+        if style(ucta) != style(lcta) and not (ucta["plain"] and lcta["plain"]
+                                                 and (k[:30] in tab_titles or (ucta["color"], lcta["color"]) in TAB_LABEL_COLOURS)):
             add(f"ctastyle:{style(ucta)}>{style(lcta)}", "CTA", comp, f'CTA style differs ("{lcta["text"]}")', style(ucta), style(lcta))
         if abs(ucta["h"] - lcta["h"]) > 4:
             add(f"ctah:{key}:{ucta['h']}>{lcta['h']}", "CTA", comp, f'CTA height differs ("{lcta["text"]}")', f'{ucta["h"]}px', f'{lcta["h"]}px')
@@ -277,7 +317,7 @@ def compare_header(u, l, add):
             add(f"hdrmissing:{kind(lc)}:{n}", kind(lc), comp, f'{kind(lc)} "{lc["text"]}" missing on UAT', "-",
                 f'{lc["text"]} ({style(lc)}) -> {lc["href"] or "-"}')
             continue
-        if style(uc) != style(lc) and not (uc["plain"] and lc["plain"] and (uc["color"], lc["color"]) in IGNORED_HEADER_COLOURS):
+        if style(uc) != style(lc) and (style(uc), style(lc)) not in EXPECTED_HEADER_CTA_STYLES                 and not (uc["plain"] and lc["plain"] and (uc["color"], lc["color"]) in IGNORED_HEADER_COLOURS):
             add(f"hdrstyle:{style(uc)}>{style(lc)}", kind(lc), comp, f'{kind(lc)} style differs ("{lc["text"]}")', style(uc), style(lc))
         if href_key(uc["href"]) != href_key(lc["href"]):
             add(f"hdrhref:{n}:{href_key(uc['href'])}>{href_key(lc['href'])}", "Link", comp,
