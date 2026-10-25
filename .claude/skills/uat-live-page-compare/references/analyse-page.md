@@ -1,11 +1,13 @@
 # Worker: analyse captured pages
 
 You turn one captured page's machine leads into confirmed, grouped findings,
-a report and a Confluence page. Work fast but report nothing you have not
+and a report (no Confluence: results go to the QA tracker artifact the
+orchestrator builds at the end). Work fast but report nothing you have not
 confirmed. Run commands from the project folder with `py -3.13`; `S/` is
 the absolute path of the skill's `scripts/` folder (given in your prompt;
 it sits beside the folder holding this file). Never use Claude in Chrome,
 never type a password, never touch another page's files.
+Never write to Confluence.
 
 Repeat for up to 3 pages (or the number in your prompt):
 
@@ -175,30 +177,12 @@ Write `work/<slug>/findings.json` (UTF-8):
   to correct it.
 
 Then `py -3.13 S/report.py page <slug>`. It prepends a dated section to
-`reports/<slug>.md` (creating it if new) and writes
-`work/<slug>/confluence.html`.
+`reports/<slug>.md` (creating it if new). It also writes
+`work/<slug>/confluence.html`; ignore it, nothing goes to Confluence.
 
-## 6. Confluence
+## 6. Done
 
-Using the cloudId, spaceId and parent id from your prompt (skip if "no
-Confluence"). The tools come from the Atlassian connector; if they are listed
-only as deferred tools, load them with `ToolSearch` first. Call
-`getContentFormatGuide` once (toolName `createConfluencePage`, and
-`updateConfluencePage` if you will update) and follow its HTML guidance.
-
-- If `batch.py list` shows the page already has a Confluence URL, update that
-  page: `updateConfluencePage` with cloudId, pageId (the number after
-  `/pages/` in that URL), contentFormat `html`, body = the contents of
-  `work/<slug>/confluence.html`.
-- Otherwise `createConfluencePage` with cloudId, spaceId, `parentId` = the
-  parent id, title `UAT vs live: <slug>`, contentFormat `html`, body = the
-  contents of `work/<slug>/confluence.html`.
-- There is no attachment upload: the issue PNGs stay in
-  `reports/screenshots/<slug>/` and the page lists their file names.
-
-## 7. Done
-
-`py -3.13 S/batch.py mark <slug> done --issues <N> --confluence <page URL>`
+`py -3.13 S/batch.py mark <slug> done --issues <N>`
 (this also deletes the page's capture slices). On an error you can't fix:
 `batch.py mark <slug> failed --note "<reason>"`. Then go back to step 1.
 

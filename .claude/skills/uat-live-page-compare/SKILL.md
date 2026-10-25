@@ -1,6 +1,6 @@
 ---
 name: uat-live-page-compare
-description: Compare UAT/staging/internal pages against their live counterparts in all 17 site locales (EN, DE, FR, ES, JA, PT, CN, HU, IT, KO, NL, PL, TH, RU, CS, TW, TR) and log every difference in UI (spacing between components, text colour, CTA colour and style, alignment, images, icons, borders, backgrounds) and content (missing, extra or duplicated components, text, links, every tab and accordion item opened including the URL query/hash they set, untranslated or missing language versions), excluding header and footer apart from the top-right header CTAs. Built for volume - one page or thousands - with parallel capture, parallel analysis agents, a live progress bar, issues grouped across languages and pages, Markdown reports and a Confluence page per UAT page. Use this whenever someone pastes a UAT or internal URL together with a live URL, pastes or attaches a list of URL pairs, asks to "compare UAT with live", "check this page against production", "find the UAT issues", "do the visual QA", "check the migration for these pages", "is UAT matching live", or wants findings for a UAT issues log or Confluence, even if they only paste two links with no instruction. Also use for Sitecore / XM Cloud / headless migration QA where pages are checked against the old site.
+description: Compare UAT/staging/internal pages against their live counterparts in all 17 site locales (EN, DE, FR, ES, JA, PT, CN, HU, IT, KO, NL, PL, TH, RU, CS, TW, TR) and log every difference in UI (spacing between components, text colour, CTA colour and style, alignment, images, icons, borders, backgrounds) and content (missing, extra or duplicated components, text, links, every tab and accordion item opened including the URL query/hash they set, untranslated or missing language versions), excluding header and footer apart from the top-right header CTAs. Built for volume - one page or thousands - with parallel capture, parallel analysis agents, a live progress bar, issues grouped across languages and pages, Markdown reports and one shareable QA tracker artifact for the run. Use this whenever someone pastes a UAT or internal URL together with a live URL, pastes or attaches a list of URL pairs, asks to "compare UAT with live", "check this page against production", "find the UAT issues", "do the visual QA", "check the migration for these pages", "is UAT matching live", or wants findings for a UAT issues log or QA artifact, even if they only paste two links with no instruction. Also use for Sitecore / XM Cloud / headless migration QA where pages are checked against the old site.
 ---
 
 # UAT vs live page comparison (batch, parallel)
@@ -8,8 +8,8 @@ description: Compare UAT/staging/internal pages against their live counterparts 
 You are the **orchestrator**. Scripts do the mechanical work (open pages,
 measure, pre-compare, screenshot, render reports); **worker agents** running
 in parallel do the judgement (confirm each difference on screen, group,
-write findings); you keep the progress bar, the common-issues roll-up and
-Confluence up to date.
+write findings); you keep the progress bar and the common-issues roll-up, and publish the
+QA tracker artifact at the end.
 
 Pages are opened with **Playwright** in the installed Chrome. Never use the
 Claude in Chrome tools. Run every script from the project folder with
@@ -19,8 +19,7 @@ next to this SKILL.md; `S/` below means that folder's absolute path, and
 `R/` the `references/` folder beside it.
 
 ```
-work/_progress.json        registry: every page, its status, issue count, Confluence URL
-work/_confluence.json      where Confluence output goes (written in Step 1)
+work/_progress.json        registry: every page, its status, issue count
 work/<slug>/plan.json      the 17 locale URLs on each side
 work/<slug>/<code>-uat.json|.txt, <code>-live.json|.txt   snapshots
 work/<slug>/en-uat-01.jpg …  full-page slices (EN only by default)
@@ -31,44 +30,21 @@ reports/_common-issues.md  issues that recur across pages
 reports/screenshots/<slug>/  annotated UAT + live image per issue
 ```
 
-No Excel. Markdown and Confluence only.
+No Excel and no Confluence. Markdown reports and the QA tracker artifact only.
 
 ## Step 0: Prerequisites (once per machine, not per task)
 
 If memory says the prerequisites were verified, skip this step. Otherwise run
-`py -3.13 S/check_prereqs.py`, and check Confluence with
-`atlassianUserInfo`. If everything passes, save a memory saying so (date,
+`py -3.13 S/check_prereqs.py`. If everything passes, save a memory saying so (date,
 versions) so later tasks skip this. If something fails, tell the user exactly
 what to install (`pip install playwright pillow`; the installed Chrome is
 used, no browser download) and stop.
 
-## Step 1: Ask where Confluence output goes (once per run)
+## Step 1: No Confluence
 
-Before starting, **ask the user for the Confluence page to write issues
-under** unless `work/_confluence.json` already names one for this run, or the
-user said "no Confluence". One question, e.g. "Which Confluence page should
-I put the results under? Paste its URL (or say 'skip')."
-
-The Confluence tools come from the Atlassian connector; if they are listed
-only as deferred tools, load them with `ToolSearch` first. With the URL:
-1. cloudId: pass the site hostname (e.g. `<site>.atlassian.net`) as
-   `cloudId`; if that fails, `getAccessibleAtlassianResources` once.
-2. Page id: the number after `/pages/` in the URL (or the code after `/x/`
-   for a tiny link). `getConfluencePage` (cloudId, pageId) to confirm it
-   exists and read its `spaceId`.
-3. `getContentFormatGuide` once each with toolName `createConfluencePage` and
-   `updateConfluencePage`, and follow its HTML guidance.
-4. `createConfluencePage` (cloudId, spaceId, `parentId` = the user's page id,
-   title "UAT vs live: progress and common issues", contentFormat `html`,
-   body a one-line placeholder). This is the **index page**; never overwrite
-   the user's own page.
-5. Write `work/_confluence.json`:
-   `{"cloudId", "spaceId", "parentId", "parentUrl", "indexId", "indexUrl"}`.
-
-The connector has no attachment upload, so the annotated screenshots stay in
-`reports/screenshots/<slug>/`; each Confluence page lists their file names.
-Each finished UAT page gets its own child page under the user's page (the
-worker creates it), and the index page is refreshed as pages finish.
+Results never go to Confluence, and don't ask the user for a Confluence page.
+The deliverable is the QA tracker artifact built in Step 5. Workers skip the
+Confluence step of `R/analyse-page.md`.
 
 ## Step 2: Plan
 
@@ -128,10 +104,9 @@ the same page. Worker prompt (fill in the brackets):
 
 > You are a UAT-vs-live worker in C:\…\<project folder>; run commands from
 > there. Read `<absolute R/ path>/analyse-page.md` and follow it exactly;
-> `S/` is `<absolute S/ path>`. Confluence: cloudId `<…>`, spaceId `<…>`,
-> parent page id `<…>` (or "no Confluence").
+> `S/` is `<absolute S/ path>`. No Confluence.
 > Process up to 3 pages, then stop. Return only one line per page:
-> `<slug> | <N> issues | <top 2 issues, short> | <Confluence URL>`.
+> `<slug> | <N> issues | <top 2 issues, short>`.
 
 Every time a worker returns:
 
@@ -140,13 +115,10 @@ Every time a worker returns:
 
    ```
    [█████████░░░░░░░░░░░░░░░░░░░░░] 9/30 pages done (30%) | 6 analysing · 4 captured, waiting · 11 to capture · 0 failed · 0 need login | 87 issues so far
-   ✓ products-remote | 14 issues | CTA style not mapped; FAQ spacing | <url>
+   ✓ products-remote | 14 issues | CTA style not mapped; FAQ spacing
    ```
-2. Run `py -3.13 S/report.py common`, then update the Confluence index page
-   with the contents of `work/_index.html`: `updateConfluencePage` (cloudId,
-   pageId = indexId, contentFormat `html`, body = the file's contents).
-   With many workers finishing close together, do this at most once per
-   returning worker, not per page.
+2. Run `py -3.13 S/report.py common` (at most once per returning worker,
+   not per page).
 3. If pages are still `captured` (or capture is still running), launch a
    replacement worker straight away so the pool stays full.
 
@@ -165,8 +137,15 @@ When everything is done (or the user stops):
 
 - Show the final progress bar, the per-page one-liners, and the top common
   issues from `reports/_common-issues.md` (issue, number of pages, languages).
-- Give the paths: `reports/<slug>.md` per page, `reports/_common-issues.md`,
-  and the Confluence index URL.
+- Build and publish the QA tracker artifact with the `qa-artifact-from-findings`
+  skill (section A), over every page in `work/pairs.txt`. Keep pages with 0
+  issues in it, such as a URL that redirects to the same page on both sides:
+  before building, set `"page_note"` (one sentence: where both sides go and
+  why there is nothing to compare) and `"page_note_tag"` (a short label, e.g.
+  "Redirects on both sides") in that page's `findings.json`, so the heat grid
+  shows the page with its label and the URL count stays complete.
+- Give the artifact link and the paths: `reports/<slug>.md` per page and
+  `reports/_common-issues.md`.
 - List anything in `failed` or `login` with the reason.
 
 ## Grouping rules (apply everywhere)
@@ -177,7 +156,7 @@ When everything is done (or the user stops):
   listing them all (e.g. "English, German, French (3/17)"). Screenshots for
   one representative language (English if affected).
 - **Same issue on several pages** is rolled up in `reports/_common-issues.md`
-  and the Confluence index page by `report.py common`, which matches issues by
+  by `report.py common`, which matches issues by
   their `signature`. Give an issue the diff lead's `sig` whenever it came from
   a lead, so the same fault on different pages groups together.
 - **Use these fixed signatures** for faults that recur across pages, even when

@@ -45,6 +45,7 @@ a { color: var(--accent); overflow-wrap: anywhere; }
 .quick { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--sunk); color: var(--live); border: 1px solid var(--live); }
 .uitag { font: 500 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
 .messy-pill.tag { margin-left: 0; }
+.note-pill { font: 600 11px var(--font-data); letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--sunk); color: var(--muted); border: 1px solid var(--line); margin-left: 8px; vertical-align: middle; white-space: nowrap; }
 .alarm-panel { background: var(--sevB-bg); border: 1px solid var(--sevB); border-radius: 10px; padding: 18px 20px; display: grid; gap: 10px; }
 .alarm-panel h2 { color: var(--sevB); }
 .alarm-panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
@@ -152,6 +153,15 @@ a.lang.on:hover, a.lang.on:focus-visible { background: var(--accent); color: var
 details { font-size: 14px; } details > summary { cursor: pointer; font-weight: 600; padding-block: 6px; }
 details ul { margin: 6px 0 0; padding-left: 20px; color: var(--muted); }
 .empty { color: var(--muted); padding: 24px 0; }
+details.fold { display: block; font-size: inherit; }
+.fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 0; font-weight: inherit; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::after { content: ""; margin-left: auto; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-25%) rotate(45deg); transition: transform .15s; }
+.fold[open] > summary::after { transform: translateY(25%) rotate(-135deg); }
+.fold > summary:hover h2 { color: var(--accent); }
+.fold-count { font: 500 12px var(--font-data); color: var(--muted); padding: 2px 8px; border-radius: 999px; background: var(--sunk); font-variant-numeric: tabular-nums; }
+.fold-body { display: grid; gap: 14px; margin-top: 14px; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .fold > summary::after { transition: none; } }
 .lightbox { position: fixed; inset: 0; background: rgba(8, 10, 16, .9); display: none; place-items: center; z-index: 20; cursor: zoom-out; overflow: auto;
   padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .lightbox.open { display: grid; }
@@ -183,11 +193,13 @@ footer { color: var(--muted); font-size: 13px; }
     <p class="note">Each cell counts the issues that affect that locale on that page. A dashed cell was not checked. The Fixed column counts every issue on the page, whatever the filters.</p>
   </section>
 
-  <section class="panel" aria-labelledby="hShared" id="sharedPanel">
-    <h2 id="hShared">Fix once, clears several pages</h2>
-    <p class="note">The same fault on more than one page, with the place it is most likely fixed. Give each group one owner and one status, then apply it to every issue in the group.</p>
-    <div class="shared" id="shared"></div>
-  </section>
+  <details class="panel fold" id="sharedPanel">
+    <summary><h2 id="hShared">Fix once, clears several pages</h2><span class="fold-count" id="sharedCount"></span></summary>
+    <div class="fold-body">
+      <p class="note">The same fault on more than one page, with the place it is most likely fixed. Give each group one owner and one status, then apply it to every issue in the group.</p>
+      <div class="shared" id="shared"></div>
+    </div>
+  </details>
 
   <section aria-labelledby="hAll" style="display:grid;gap:18px">
     <h2 id="hAll">All issues</h2>

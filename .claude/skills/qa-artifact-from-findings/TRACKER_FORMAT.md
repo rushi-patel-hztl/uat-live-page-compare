@@ -4,7 +4,7 @@ Every UAT-vs-live QA artifact is built in this one format, whether it comes from
 
 ## Page
 
-- **Top:** heading, stats (issues, open blockers, messy pages, locales affected, fix-once groups), a progress bar ("x of y fixed"), a red Messy panel when any page is Messy, the issues-per-page-and-locale heat grid with a Fixed column, then the "Fix once, clears several pages" groups, then All issues.
+- **Top:** heading, stats (issues, open blockers, messy pages, locales affected, fix-once groups), a progress bar ("x of y fixed"), a red Messy panel when any page is Messy, the issues-per-page-and-locale heat grid with a Fixed column, then the "Fix once, clears several pages" groups (an accordion, closed by default, with the group count on its header), then All issues.
 - **Toolbar filters:** page, locale, issue type (checkboxes), status, severity, "Mine", sort (severity first or original order) and text search. The filters drive the stats and the heat grid.
 - **Each issue:** severity and type tags, component, what differs, UAT and live values, locale chips (link to the UAT page in that locale), likely cause, "also on" links, a work strip (status, severity, assignee, "Assign to me", notes) and the UAT/live screenshots.
 - **Each fix-once group:** its own status and assignee, a "Fix in" tag (Component, Template, Content, Config) with a short note, and "Apply to all N issues".

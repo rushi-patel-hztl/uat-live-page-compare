@@ -93,7 +93,8 @@ for slug in slugs:
     pages.append(dict(slug=slug, label=label(slug), title=f.get("title", slug), uat=plan["uat"], live=plan["live"],
                       checked=[c for c, _ in LOC if c in plan["locales"]], issues=issues,
                       not_issues=f.get("not_issues", []), couldnt_check=f.get("couldnt_check", []), updated=date,
-                      version_mismatch=bool(f.get("version_mismatch"))))
+                      version_mismatch=bool(f.get("version_mismatch")),
+                      note=f.get("page_note", ""), note_tag=f.get("page_note_tag", "")))
 by = {p["slug"]: p for p in pages}
 shared = []
 for sg, refs in sigs.items():
@@ -111,12 +112,15 @@ shared.sort(key=lambda g: -len({r[0] for r in g["refs"]}))
 hits = collections.Counter(c for p in pages for i in p["issues"] for c in i["langs"])
 worst = ", ".join(c for c, _ in hits.most_common(5))
 n = sum(len(p["issues"]) for p in pages)
+urls = sum(len(p["checked"]) for p in pages)
 data = dict(
     locales=LOC, title=a.title, heading=a.heading or a.title,
     intro=(f"{len(pages)} pages compared between the internal (UAT) site and the live site in all 17 locales at 1440px wide, "
            f"header CTA and menu included, footer and top-bar utility links excluded; built {date}. Source 404 means live "
            f"(source) returns 404; Target 404 means the internal page (target) returns 404."),
-    heat_note=f"{n} issues across {len(pages)} pages. Locales with the most issues: {worst}." if n else "",
+    heat_note=(f"{len(pages)} pages, {urls} locale URLs compared on each side ({2 * urls} page loads, internal + live). "
+               f"{n} issues across {len(pages)} pages. Locales with the most issues: {worst}.") if n else
+              f"{len(pages)} pages, {urls} locale URLs compared on each side ({2 * urls} page loads, internal + live). No issues.",
     built=date, pages=pages, shared=shared)
 data["packs"] = True
 data = tracker.upgrade(data, {p["slug"]: sections_of(p["slug"]) for p in pages})

@@ -107,7 +107,7 @@ function renderSummary() {
   renderProgress();
   let h = `<thead><tr><th></th>${codes.map((c) => `<th title="${esc(names[c])}">${c}</th>`).join("")}<th>All</th><th>Fixed</th></tr></thead><tbody>`;
   for (const { p, is } of pg) {
-    h += `<tr><th class="row"><button data-go="${esc(p.slug)}">${esc(p.label)}</button>${p.messy && p.messy.on ? `<span class="messy-pill">Messy</span>` : ""}</th>`;
+    h += `<tr><th class="row"><button data-go="${esc(p.slug)}">${esc(p.label)}</button>${p.messy && p.messy.on ? `<span class="messy-pill">Messy</span>` : ""}${p.note ? `<span class="note-pill" title="${esc(p.note)}">${esc(p.note_tag || "Note")}</span>` : ""}</th>`;
     for (const c of codes) {
       if (!p.checked.includes(c)) { h += `<td class="na" title="${esc(names[c])}: not checked"></td>`; continue; }
       const n = is.filter((i) => i.langs.includes(c) && i.rc !== "fixed").length;
@@ -118,6 +118,7 @@ function renderSummary() {
   }
   $("#heat").innerHTML = h + "</tbody>";
   $("#sharedPanel").hidden = !sh.length;
+  $("#sharedCount").textContent = `${sh.length} group${sh.length === 1 ? "" : "s"}`;
   if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#shared")) return;
   sh.sort((a, b) => topSev(a.g) - topSev(b.g) || new Set(b.refs.map((r) => r[0])).size - new Set(a.refs.map((r) => r[0])).size);
   $("#shared").innerHTML = sh.map(({ g, refs }) => {
@@ -199,7 +200,7 @@ function render() {
     const w = list.reduce((n, i) => n + (done(st(T.issues[i.key])) ? 0 : SW[SR[sevOf(i)]]), 0);
     const pc = cnt(p.issues);
     blocks.push({ w, m: p.messy && p.messy.on ? 1 : 0, html: `<section class="page" id="${esc(p.slug)}"><div class="page-head"><span class="eyebrow">${p.issues.length} issue${p.issues.length === 1 ? "" : "s"} · ${pc.Fixed} fixed · ${p.checked.length} locale${p.checked.length === 1 ? "" : "s"} checked${p.updated ? " · " + esc(p.updated) : ""}</span>
-      <h2>${esc(p.label)}${p.messy && p.messy.on ? `<span class="messy-pill">Messy</span>` : ""}</h2>${p.messy && p.messy.on ? `<div class="alarm" role="alert"><b>Messy page</b>${p.messy.why.map((w) => `<span>${esc(w)}</span>`).join("")}</div>` : ""}${p.label !== p.title ? `<p class="note">${esc(p.title)}</p>` : ""}
+      <h2>${esc(p.label)}${p.messy && p.messy.on ? `<span class="messy-pill">Messy</span>` : ""}</h2>${p.messy && p.messy.on ? `<div class="alarm" role="alert"><b>Messy page</b>${p.messy.why.map((w) => `<span>${esc(w)}</span>`).join("")}</div>` : ""}${p.label !== p.title ? `<p class="note">${esc(p.title)}</p>` : ""}${p.note ? `<p class="note">${esc(p.note)}</p>` : ""}
       <div class="urls"><span><span class="u">UAT</span> <a href="${esc(p.uat)}" target="_blank" rel="noopener">${esc(p.uat)}</a></span><span><span class="l">Live</span> <a href="${esc(p.live)}" target="_blank" rel="noopener">${esc(p.live)}</a></span></div>
       <div class="rc" data-slug="${esc(p.slug)}"></div></div>
       ${list.map((i) => issueHtml(p, i)).join("") || `<p class="empty">No issues found on this page.</p>`}
