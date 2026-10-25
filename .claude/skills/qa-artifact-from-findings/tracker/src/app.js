@@ -164,7 +164,8 @@ try {
   const s = JSON.parse(localStorage.getItem("qa-filters") || "{}");
   for (const k of FILTERS) if (s[k] && [...$("#" + k).options].some((o) => o.value === s[k])) $("#" + k).value = s[k];
   $("#fMine").checked = !!s.mine;
-  if (Array.isArray(s.kinds)) { selKinds.clear(); s.kinds.forEach((k) => kindsAll.includes(k) && selKinds.add(k)); }
+  // A type that did not exist when the filter was saved starts selected; saves without `known` predate this and are ignored.
+  if (Array.isArray(s.kinds) && Array.isArray(s.known)) { selKinds.clear(); kindsAll.forEach((k) => (s.kinds.includes(k) || !s.known.includes(k)) && selKinds.add(k)); }
 } catch (e) {}
 syncKinds();
 
@@ -189,14 +190,15 @@ function issueHtml(p, i) {
 }
 function render() {
   const fp = $("#fPage").value, fl = $("#fLang").value, ft = $("#fText").value.trim().toLowerCase(), bySev = $("#fSort").value !== "orig";
-  try { localStorage.setItem("qa-filters", JSON.stringify({ fPage: fp, fLang: fl, fStatus: $("#fStatus").value, fSev: $("#fSev").value, fSort: $("#fSort").value, mine: $("#fMine").checked, kinds: [...selKinds] })); } catch (e) {}
+  try { localStorage.setItem("qa-filters", JSON.stringify({ fPage: fp, fLang: fl, fStatus: $("#fStatus").value, fSev: $("#fSev").value, fSort: $("#fSort").value, mine: $("#fMine").checked, kinds: [...selKinds], known: kindsAll })); } catch (e) {}
   let shown = 0; const blocks = [];
   for (const p of D.pages) {
     if (fp && p.slug !== fp) continue;
     const list = p.issues.filter((i) => (!fl || i.langs.includes(fl)) && kindOn(i)
       && (!ft || [i.issue, i.component, i.uat, i.live, i.cause].join(" ").toLowerCase().includes(ft)));
     shown += list.length;
-    if (!list.length && (fl || ft || kindsFiltered())) continue;
+    // A page with a note (e.g. redirects on both sides) has nothing to filter, so only the search hides it.
+    if (!list.length && (ft || (!p.note && (fl || kindsFiltered())))) continue;
     list.sort((a, b) => (b.messy ? 1 : 0) - (a.messy ? 1 : 0) || (bySev ? SR[sevOf(a)] - SR[sevOf(b)] : 0) || a.id - b.id);
     const w = list.reduce((n, i) => n + (done(st(T.issues[i.key])) ? 0 : SW[SR[sevOf(i)]]), 0);
     const pc = cnt(p.issues);
@@ -204,7 +206,7 @@ function render() {
       <h2>${esc(p.label)}${p.messy && p.messy.on ? `<span class="messy-pill">Messy</span>` : ""}</h2>${p.messy && p.messy.on ? `<div class="alarm" role="alert"><b>Messy page</b>${p.messy.why.map((w) => `<span>${esc(w)}</span>`).join("")}</div>` : ""}${p.label !== p.title ? `<p class="note">${esc(p.title)}</p>` : ""}${p.note ? `<p class="note">${esc(p.note)}</p>` : ""}
       <div class="urls"><span><span class="u">UAT</span> <a href="${esc(p.uat)}" target="_blank" rel="noopener">${esc(p.uat)}</a></span><span><span class="l">Live</span> <a href="${esc(p.live)}" target="_blank" rel="noopener">${esc(p.live)}</a></span></div>
       <div class="rc" data-slug="${esc(p.slug)}"></div></div>
-      ${list.map((i) => issueHtml(p, i)).join("") || `<p class="empty">No issues found on this page.</p>`}
+      ${list.map((i) => issueHtml(p, i)).join("") || (p.note && !p.issues.length ? `<p class="empty"><span class="note-pill tag">${esc(p.note_tag || "Note")}</span> Nothing to compare on this page.</p>` : `<p class="empty">No issues found on this page.</p>`)}
       ${p.not_issues.length ? `<details><summary>Possibly not an issue (${p.not_issues.length})</summary><ul>${p.not_issues.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
       ${p.couldnt_check.length ? `<details><summary>Couldn't check (${p.couldnt_check.length})</summary><ul>${p.couldnt_check.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
     </section>` });
