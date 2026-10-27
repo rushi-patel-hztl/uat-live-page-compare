@@ -39,8 +39,8 @@ def upgrade(d, sections=None):
             i['sig'] = i.get('signature') or i.get('group') or ''
             raw = dict(i, kind=i['kind'], signature=i['sig'])
             i['kind'] = norm_kind(raw)
-            i['sev'] = severity(i['kind'], i['sig'])
-            i['ui'] = is_ui(i['kind'], i['sig'])
+            i['sev'] = severity(i['kind'], i['sig'], i['issue'])
+            i['ui'] = is_ui(i['kind'], i['sig']) or is_link_style(i['sig'], i['issue'])
             i['quick'] = 'Unpublish in Sitecore' if i['kind'] == 'Source 404' or i['sig'] == 'faq-extra-locales' else ''
             i['rc'] = ''
             i['types'] = types_of(i['kind'], i['ui'], i['issue'] + ' | ' + i['uat'], i['component'], i['sig'], i['live'])

@@ -26,7 +26,7 @@ await (async () => {
   const centred = (el) => { const range = document.createRange(); range.selectNodeContents(el); const t = range.getBoundingClientRect(); const mid = t.left + t.width / 2; return Math.abs(mid - W / 2) <= 16 ? 'C' : (t.left < W / 2 ? 'L' : 'R'); };
   // Text colours, CTAs, images and text of whatever is visible inside root.
   const detail = (root, cap) => {
-    const d = { texts: [], ctas: [], imgs: [], txt: norm(root.innerText).slice(0, cap) };
+    const d = { texts: [], ctas: [], links: [], imgs: [], txt: norm(root.innerText).slice(0, cap) };
     const seen = new Set();
     [...root.querySelectorAll('p,li,span,div,h3,h4,h5,h6')].filter((e) => shown(e) && !isEx(e) && !e.closest(ctaSel) && [...e.childNodes].some((n) => n.nodeType === 3 && norm(n.textContent))).forEach((e) => {
       const es = getComputedStyle(e); const k = `${e.tagName} ${hex(es.color)} ${centred(e)}`;
@@ -41,6 +41,13 @@ await (async () => {
         icon: !!(e.querySelector('svg,img,i,[class*=icon]') || (af && af !== 'none' && af !== 'normal')),
         plain: hex(es.backgroundColor) === 'none' && (es.borderTopStyle === 'none' || px(es.borderTopWidth) === 0),
         href: (e.getAttribute('href') || '').replace(/^https?:\/\/[^/]+/, '').slice(0, 120) });
+    });
+    // Plain text links (not CTAs): the text pass above reads the paragraph's colour, not the link's.
+    const linkSeen = new Set();
+    [...root.querySelectorAll('a[href]')].filter((e) => shown(e) && !isEx(e) && !e.matches(ctaSel) && !e.closest(ctaSel) && !e.querySelector(ctaSel) && norm(e.innerText)).forEach((e) => {
+      const text = norm(e.innerText).slice(0, 40); if (linkSeen.has(text) || linkSeen.size >= 12) return; linkSeen.add(text);
+      const es = getComputedStyle(e);
+      d.links.push({ text, color: hex(es.color), under: es.textDecorationLine.includes('underline') ? 'U' : '-', weight: px(es.fontWeight) >= 600 ? 'B' : '-' });
     });
     [...root.querySelectorAll('img')].filter((im) => shown(im) && !isEx(im)).slice(0, 12).forEach((im) => {
       const ir = im.getBoundingClientRect(); let f = im.currentSrc || im.src || ''; try { f = new URL(f).pathname.split('/').pop(); } catch (e) {}
@@ -119,7 +126,7 @@ await (async () => {
     const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true');
     for (const t of tabs) {
       const tab = norm(t.innerText || t.getAttribute('aria-label')).slice(0, 40);
-      if (!safe(t) || budget-- <= 0) { blk.tabPanels.push({ tab, skipped: safe(t) ? 'click limit' : 'tab is a link', texts: [], ctas: [], imgs: [], txt: '' }); continue; }
+      if (!safe(t) || budget-- <= 0) { blk.tabPanels.push({ tab, skipped: safe(t) ? 'click limit' : 'tab is a link', texts: [], ctas: [], links: [], imgs: [], txt: '' }); continue; }
       t.scrollIntoView({ block: 'center' }); t.click(); await sleep(500);
       const own = byId(t.getAttribute('aria-controls'));
       const panel = (own && shown(own) && own) || [...b.querySelectorAll('[role=tabpanel]')].find(shown) || b;
@@ -140,7 +147,7 @@ await (async () => {
       const title = norm(t.innerText || t.getAttribute('aria-label')).slice(0, 60);
       const wasOpen = isOpen();
       if (!wasOpen) {
-        if (!safe(t) || budget-- <= 0) { blk.accItems.push({ title, open: false, skipped: safe(t) ? 'click limit' : 'trigger is a link', texts: [], ctas: [], imgs: [], txt: '' }); continue; }
+        if (!safe(t) || budget-- <= 0) { blk.accItems.push({ title, open: false, skipped: safe(t) ? 'click limit' : 'trigger is a link', texts: [], ctas: [], links: [], imgs: [], txt: '' }); continue; }
         t.scrollIntoView({ block: 'center' });
         if (det) det.open = true; else t.click();
         await sleep(450);
@@ -148,7 +155,7 @@ await (async () => {
       const own = byId(t.getAttribute('aria-controls'));
       const after = t.nextElementSibling || (t.parentElement !== b && t.parentElement.nextElementSibling);
       const panel = det || (own && shown(own) && own) || (after && shown(after) && after) || null;
-      blk.accItems.push({ title, open: wasOpen, opened: isOpen(), url: location.search + location.hash, ...(panel ? detail(panel, 1000) : { texts: [], ctas: [], imgs: [], txt: '' }) });
+      blk.accItems.push({ title, open: wasOpen, opened: isOpen(), url: location.search + location.hash, ...(panel ? detail(panel, 1000) : { texts: [], ctas: [], links: [], imgs: [], txt: '' }) });
       if (!wasOpen && isOpen()) { if (det) det.open = false; else t.click(); await sleep(250); }
     }
   }
@@ -165,6 +172,7 @@ await (async () => {
   const content = (d, p) => {
     d.texts.forEach((t) => lines.push(`${p}T ${t.tag} ${t.color} ${t.align} "${t.text.slice(0, 30)}"`));
     d.ctas.forEach((c) => lines.push(`${p}CTA "${c.text.slice(0, 30)}" ${c.color} on ${c.bg} border=${c.border} r=${c.r} ${c.w}x${c.h} x=${c.x}${c.icon ? ' icon' : ''}${c.plain ? ' PLAIN' : ''} -> ${c.href.slice(0, 60)}`));
+    d.links.forEach((k) => lines.push(`${p}LINK "${k.text.slice(0, 30)}" ${k.color} ${k.under}${k.weight}`));
     d.imgs.forEach((m) => lines.push(`${p}IMG ${m.file.slice(0, 40)} ${m.w}x${m.h} x=${m.x}${m.broken ? ' BROKEN' : ''} alt="${m.alt.slice(0, 30)}"`));
   };
   data.blocks.forEach((k, i) => {

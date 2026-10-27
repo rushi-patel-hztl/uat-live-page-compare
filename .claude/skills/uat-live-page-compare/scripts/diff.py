@@ -202,6 +202,18 @@ def compare_content(ub, lb, comp, key, add, bg=None):
         if href_key(ucta["href"]) != href_key(lcta["href"]):
             add(f"ctahref:{key}:{href_key(ucta['href'])}>{href_key(lcta['href'])}", "Link", comp,
                 f'CTA "{lcta["text"]}" links elsewhere (check final page after redirects)', ucta["href"], lcta["href"])
+    # Plain text links paired by link text; snapshots taken before links were captured have none.
+    ulinks = {norm(k["text"]): k for k in ub.get("links", [])}
+    diffs = [(ulinks[t], k) for t, k in ((norm(k["text"]), k) for k in lb.get("links", [])) if t in ulinks]
+    cols = sorted({(u["color"], k["color"]) for u, k in diffs if not colour_ok(u["color"], k["color"])})
+    if cols:
+        names = [f'"{k["text"]}"' for u, k in diffs if (u["color"], k["color"]) in cols][:3]
+        add(f"linkcolor:{','.join(u for u, _ in cols)}>{','.join(l for _, l in cols)}", "Colour", comp,
+            f"Text link colour differs ({', '.join(names)})", ", ".join(u for u, _ in cols), ", ".join(l for _, l in cols))
+    decos = sorted({(u["under"] + u["weight"], k["under"] + k["weight"]) for u, k in diffs if (u["under"], u["weight"]) != (k["under"], k["weight"])})
+    if decos:
+        add(f"linkstyle:{','.join(u for u, _ in decos)}>{','.join(l for _, l in decos)}", "UI", comp,
+            "Text link underline / weight differs (U = underlined, B = bold)", ", ".join(u for u, _ in decos), ", ".join(l for _, l in decos))
     broken = [m["file"] for m in ub["imgs"] if m["broken"]]
     if broken:
         add(f"imgbroken:{key}", "Image", comp, "Broken image on UAT", ", ".join(broken), "-")

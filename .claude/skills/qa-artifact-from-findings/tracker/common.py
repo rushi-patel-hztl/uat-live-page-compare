@@ -55,6 +55,10 @@ FONT_RX = re.compile(r"\b(text|title|heading|label|link|subtitle|subheading|eyeb
                      r"|\bcolou?rs?\b[^.;]{0,25}\b(text|title|heading|label|link|font)s?\b", re.I)
 NON_FONT_UI_RX = re.compile(r"\b(background|bg|border|fill(ed)?|spacing|gap|align(ed|ment)?|centred|centered|layout|radius|corners?|size|divider|line|rule|outline|shadow|width|height|theme|banner|strip)\b", re.I)
 IMG_RX = re.compile(r"((image|icon|logo|badge|thumbnail|picture|photo)s?[^.;]{0,45}(missing|broken|not (load|shown|displayed|render)|absent|no longer|without)|(missing|broken|absent)[^.;]{0,35}(image|icon|logo|badge|thumbnail)s?|no (check |cross )?(image|icon)s?)", re.I)
+# Text link styling (colour, underline, weight, e.g. live blue vs UAT black): always UI and Major.
+# Matched on the compare skill's linkcolor/linkstyle leads, or on the wording.
+LINK_RX = re.compile(r"\blinks?\b[^.;]{0,30}\b(colou?rs?|underlined?|underlines|bold|weight|blue|black|navy|grey|gray|white)\b|\b(colou?rs?|underline)\b[^.;]{0,25}\blinks?\b", re.I)
+def is_link_style(sig, text=""): return (sig or "").startswith(("linkcolor", "linkstyle")) or bool(LINK_RX.search((text or "").split(" | ")[0]))
 def is_header(kind, component, sig): return kind.lower().startswith("header") or component.lower().startswith("header") or (sig or "").lower().startswith("header")
 def types_of(kind, ui, text, component="", sig="", live=""):
     """Filterable issue types: the meaningful ones only; an issue can carry several."""
@@ -63,6 +67,10 @@ def types_of(kind, ui, text, component="", sig="", live=""):
     if kind == "Duplicated component": t.append("Duplicated Component")
     if is_header(kind, component, sig): t.append("Header")
     sentence = text.split(" | ")[0]
+    if is_link_style(sig, sentence):
+        t.append("UI")
+        if IMG_RX.search(text): t.append("Missing Image")
+        return t
     fsize = bool(FONT_SIZE_RX.search(sentence)) and font_size_over_2px(text, live)
     if ui or fsize:
         rest = FONT_SIZE_RX.sub(" ", sentence) if fsize else sentence
@@ -72,9 +80,10 @@ def types_of(kind, ui, text, component="", sig="", live=""):
         if fsize: t.append("Font Size")
     if IMG_RX.search(text): t.append("Missing Image")
     return t or ["Other"]
-def severity(kind, sig):
+def severity(kind, sig, text=""):
     if kind == "Source 404": return "Minor"  # live 404, UAT loads: unpublish the page in Sitecore
     if kind in BLOCKER_KINDS: return "Blocker"
+    if is_link_style(sig, text): return "Major"
     if sig in MINOR_SIGS: return "Minor"
     if kind in MAJOR_KINDS or (sig or "").startswith("table-") or sig=="hero-image-differs": return "Major"
     return "Minor"
