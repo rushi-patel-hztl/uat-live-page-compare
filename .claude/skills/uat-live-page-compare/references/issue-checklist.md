@@ -113,12 +113,12 @@ panel's own `· T / CTA / IMG / TXT` lines).
 | Heading inside the tab panel centred on one side, left on the other | Alignment style id not mapped | Migration |
 | Heading inside the panel is a different level (H2 vs H3): the panel lands in another block | Heading level option not mapped | Migration |
 | Tab does not switch when clicked on UAT | Tab script / component bug | DEV |
-| `url=` after a click differs (live sets `?tab=remote-support`, UAT doesn't, or a different value) | Tab deep-link (query) not implemented | DEV |
+| `url=` after a click: live sets a query (`?tab=remote-support`) or hash and UAT sets none, or the reverse | Tab deep-link (query) not implemented | DEV |
 | Different tab open on load, or the page's `?tab=` query not honoured | Default tab setting / query handling | Content / Manual, or DEV |
 | Panel content, CTAs or images differ for one tab only | That tab's datasource or language version | Content / Manual |
 
 Not issues: active / inactive tab label colour (UAT #3056EF / #27272A or
-#474747, live #050A52 / #545454), expected per design; both sides setting the same `?tab=` value; the site scrolling to the
+#474747, live #050A52 / #545454), expected per design; both sides setting a `?tab=` query, even with different values; the site scrolling to the
 tabs on load when the URL has `?tab=` (capture resets the scroll).
 
 ## 11. Accordions
@@ -139,7 +139,9 @@ the capture: open the tab first (`"open": ["<tab>", "<item>"]` in shots.json).
 | Item missing / extra, or open on load on one side only | Item not migrated / default-expanded setting | Content / Manual |
 
 Not issues: no divider above the first item on UAT where live has a 1px line
-(expected per design); item title colour navy #050A52 on UAT vs #141414 or #000000 (FAQ)
+(expected per design); both sides adding a hash after expanding but with
+different values (UAT `#how-quickly-to-see-value` vs live `#qalist-…-item-…`:
+only presence is tested); item title colour navy #050A52 on UAT vs #141414 or #000000 (FAQ)
 on live (expected title colour; only report it if it fails WCAG AA on a dark
 background); "(Opens in a new tab)" screen-reader text (1x1px) after links;
 video thumbnails that lazy-load more slowly but appear; live CTAs pointing to a
@@ -205,6 +207,12 @@ Decide this first, per locale (SKILL.md "Status rules").
 | Dropdown options differ (text, order, count) or default value differs | Datasource / list not migrated | Content / Manual |
 | Dropdown doesn't open, or choosing an option does nothing on internal | Component script | DEV |
 | Dropdown style differs (border, arrow icon, colours, spacing) | Component CSS | DEV |
+
+Not issues (expected): the 'Number of Employees' form dropdown ranges (UAT
+`1 - 4 | 5 - 24 | 25 - 49 | 50 - 99 | 100 - 499 | 500 - 1000 | 1000 +` vs live
+`1 - 5 | 5 - 25 | 25 - 50 | 50 - 100 | 100 - 500 | 500 - 1000 | 1000 +`); the
+decorative hand-drawn / curved arrow illustration beside or above a contact
+form missing on UAT (often reported as a `bgimg` lead on the form section).
 
 ## 15. Videos
 

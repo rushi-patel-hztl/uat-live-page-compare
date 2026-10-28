@@ -229,8 +229,12 @@ def compare_content(ub, lb, comp, key, add, bg=None):
 
 
 def url_lead(u, l):
-    """(uat, live) query + hash after a click when they differ; None when equal or not captured."""
-    if "url" not in u or "url" not in l or u["url"] == l["url"]:
+    """(uat, live) query + hash after a click when one side sets a query or hash the other doesn't;
+    None when both set the same parts (values may differ: expected) or not captured."""
+    if "url" not in u or "url" not in l:
+        return None
+    has = lambda s: (bool(s.split("#")[0].lstrip("?")), "#" in s and bool(s.split("#", 1)[1]))
+    if has(u["url"] or "") == has(l["url"] or ""):
         return None
     return u["url"] or "(none)", l["url"] or "(none)"
 
@@ -272,7 +276,7 @@ def compare_tabs(ub, lb, li, add):
             continue
         comp = f'{lb["head"][:40]} › tab "{l["tab"]}" (live #{li})'
         if url_lead(u, l):
-            add(f"taburl:{li}:{n}", "Tabs", comp, "URL query/hash after clicking the tab differs", *url_lead(u, l))
+            add(f"taburl:{li}:{n}", "Tabs", comp, "URL query/hash set after clicking the tab on one side only", *url_lead(u, l))
         if u.get("selected") is False and l.get("selected") is not False:
             add(f"tabclick:{li}:{n}", "Tabs", comp, "Tab does not switch when clicked on UAT", f'"{u["tab"]}" stays unselected', "switches")
             continue
@@ -303,7 +307,7 @@ def compare_accordions(u, l, add):
             add(f"accclick:{li}:{n}", "Accordion", comp, "Accordion item does not expand when clicked on UAT", "stays closed", "expands")
             continue
         if url_lead(uit, lit):
-            add(f"accurl:{li}:{n}", "Accordion", comp, "URL query/hash after expanding the item differs", *url_lead(uit, lit))
+            add(f"accurl:{li}:{n}", "Accordion", comp, "URL query/hash set after expanding the item on one side only", *url_lead(uit, lit))
         compare_content(uit, lit, comp, f"{li}:acc:{n}", add)
     if matched or not la:
         live_titles = {norm(it["title"]) for _, _, it in la}

@@ -60,12 +60,15 @@ stop and return what you have.
   checked: confirm on screen or list under "Couldn't check".
   Tabs and accordion items are paired across the whole page, so a heading of
   a different level on one side doesn't stop them being compared.
-- **URL leads** ("URL query/hash after clicking the tab / expanding the item
-  differs"): `url=` on each `TAB` / `ACCI` line is `location.search +
-  location.hash` right after the click. Live updating it (e.g.
-  `?tab=remote-support`, `#faq-2`) and UAT not, or to a different value,
-  breaks deep links and sharing: an issue if confirmed by clicking on both
-  sides (`browse.py` with a `js` of `location.search + location.hash`).
+- **URL leads** ("URL query/hash set after clicking the tab / expanding the
+  item on one side only"): `url=` on each `TAB` / `ACCI` line is
+  `location.search + location.hash` right after the click. Test presence
+  only: live setting a query or hash (e.g. `?tab=remote-support`, `#faq-2`)
+  and UAT setting none (or the reverse) is an issue if confirmed by clicking
+  on both sides (`browse.py` with a `js` of `location.search +
+  location.hash`). Both sides setting one with **different values** is
+  expected, never an issue (e.g. `#how-quickly-to-see-value` vs
+  `#qalist-…-item-…`).
 - **Header leads**: pages are captured at 1440px so the full header shows.
   Two things are in scope:
   - `HEADER NAV <row>: a | b | c` lines (component "Header navigation"):

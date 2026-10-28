@@ -244,8 +244,19 @@ on screen with `browse.py` (a `js` expression per page) for every locale.
     `#3056EF` border, 4px radius (e.g. "Request a trial", "Start free trial").
     Never report that style difference; still report a CTA on one side only,
     different text or a different destination.
-- Tabs and accordions: report when clicking a tab or expanding an item sets
-  a URL query or hash on live but not on UAT (or a different one).
+- Tabs and accordions: test only the **presence** of the URL query and hash
+  after clicking a tab or expanding an item. Report it when one side sets a
+  query (or a hash) and the other sets none. A different value is expected,
+  not an issue (e.g. UAT `#how-quickly-to-see-value` vs live
+  `#qalist-e7b7e9fc40-item-fc0c405042`, or `?tab=a` vs `?tab=b`).
+- Never report the 'Number of Employees' form dropdown ranges: UAT `1 - 4 |
+  5 - 24 | 25 - 49 | 50 - 99 | 100 - 499 | 500 - 1000 | 1000 +` vs live
+  `1 - 5 | 5 - 25 | 25 - 50 | 50 - 100 | 100 - 500 | 500 - 1000 | 1000 +` is
+  expected. Still report a dropdown that is missing, doesn't open or doesn't
+  submit.
+- Never report the decorative hand-drawn / curved arrow illustration beside
+  or above a contact form being missing on UAT (live has it): expected per
+  design. Other form differences are still reported on their own.
 - **Never report font size or font weight differences.**
 - Never report body text #2D2D2D (UAT) vs #545454 or #050A52 (live).
 - Never report heading/title text #050A52 navy (UAT) vs #141414 near-black
