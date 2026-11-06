@@ -21,6 +21,8 @@ py -3.13 S/batch.py capture --slugs <slug>,<slug> --concurrency 12    # backgrou
 Then analyse each captured page exactly as Step 4 of the `uat-live-page-compare` skill describes (workers or yourself, following `references/analyse-page.md`), with **no Confluence** unless the user asks. Keep the same `signature` for the same fault as before: the merge matches issues by signature, so a renamed signature reads as one fixed plus one new.
 
 ## 3. Merge
+The merge drops known not-issues (`qa-artifact-from-findings/tracker/known_not_issues.py`) from both the previous and the new findings first, so a difference accepted since the last run disappears rather than showing as fixed. For trackers built with `qa-artifact-from-findings/build.py` (not the special-pages one), use that skill's section A2 and its `recheck.py` instead.
+
 ```
 py -3.13 artifact-special/recheck.py merge <slug> [<slug> ...]
 ```

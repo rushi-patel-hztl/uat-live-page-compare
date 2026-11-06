@@ -12,6 +12,7 @@ Writes OUT/index.html, OUT/packs/<slug>.txt (screenshots, base64 packs) and OUT/
 import argparse, base64, collections, io, json, pathlib, re, struct, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / 'tracker'))
 import upgrade as tracker
+from known_not_issues import clean as drop_known
 from urllib.parse import urlparse
 from PIL import Image
 
@@ -27,6 +28,7 @@ ap.add_argument("--prefix", default="", help="use every slug in work/_progress.j
 ap.add_argument("--slugs", default="")
 ap.add_argument("--slugs-file", default="")
 ap.add_argument("--exclude", default="", help="comma-separated slugs to leave out")
+ap.add_argument("--open-only", action="store_true", help="leave out issues fixed at a re-check (they stay in findings.json)")
 ap.add_argument("--date", default="")
 ap.add_argument("--max-width", type=int, default=1280)
 ap.add_argument("--quality", type=int, default=72)
@@ -75,21 +77,24 @@ def sections_of(slug):
 pages, sigs = [], collections.defaultdict(list)
 for slug in slugs:
     f = json.load(open(W / "work" / slug / "findings.json", encoding="utf-8-sig"))
+    for _i, _sig, _why in drop_known(f):  # differences we know are not issues never reach the tracker
+        print(f"{slug}: left out #{_i} {_sig} ({_why})")
     plan = json.load(open(W / "work" / slug / "plan.json", encoding="utf-8-sig"))
     issues = []
-    for i in f["issues"]:
+    # resolved_issues (written by a re-check merge) stay visible, marked "Gone at re-check"
+    for i in f["issues"] + ([] if a.open_only else [dict(r, recheck="fixed") for r in f.get("resolved_issues", [])]):
         kind = i["kind"]
         if kind == "Locale" and i["live"].strip().startswith("404"):
             kind = "Source 404"
         elif kind == "Locale" and i["uat"].strip().startswith("404"):
             kind = "Target 404"
         sg = i.get("signature") or ""
-        if sg:
+        if sg and i.get("recheck") != "fixed":
             sigs[sg].append((slug, i["id"], i["issue"], kind))
         shots = {k: v for k, v in (i.get("shots") or {}).items() if (W / "reports" / v).exists()}
         issues.append(dict(id=i["id"], component=i["component"], kind=kind, issue=i["issue"], uat=i["uat"], live=i["live"],
                            cause=i.get("cause", ""), langs=[N2C[n] for n in i["languages"] if n in N2C], shots=shots,
-                           group="", also=[], signature=sg))
+                           group="", also=[], signature=sg, rc=i.get("recheck", "")))
     pages.append(dict(slug=slug, label=label(slug), title=f.get("title", slug), uat=plan["uat"], live=plan["live"],
                       checked=[c for c, _ in LOC if c in plan["locales"]], issues=issues,
                       not_issues=f.get("not_issues", []), couldnt_check=f.get("couldnt_check", []), updated=date,
@@ -109,9 +114,9 @@ for sg, refs in sigs.items():
         iss["group"] = sg
 shared.sort(key=lambda g: -len({r[0] for r in g["refs"]}))
 
-hits = collections.Counter(c for p in pages for i in p["issues"] for c in i["langs"])
+hits = collections.Counter(c for p in pages for i in p["issues"] if i["rc"] != "fixed" for c in i["langs"])
 worst = ", ".join(c for c, _ in hits.most_common(5))
-n = sum(len(p["issues"]) for p in pages)
+n = sum(1 for p in pages for i in p["issues"] if i["rc"] != "fixed")
 urls = sum(len(p["checked"]) for p in pages)
 data = dict(
     locales=LOC, title=a.title, heading=a.heading or a.title,

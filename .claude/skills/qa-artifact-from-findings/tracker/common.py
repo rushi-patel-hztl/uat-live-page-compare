@@ -44,6 +44,9 @@ TYPE_ORDER = ["Source 404","Target 404","EN Fallback","Content Missing","Compone
 # the compare skill's own rules on font size are unchanged. Other styling in the same issue keeps UI as well.
 FONT_SIZE_RX = re.compile(r"\bfont[- ]sizes?\b|\b(text|font|type|heading|title|label|copy|eyebrow|subtitle|subheading)s?\b[^.;]{0,30}\b(size[sd]?|smaller|larger|bigger)\b"
                           r"|\b(smaller|larger|bigger)\b[^.;]{0,15}\b(text|font|heading|title|label)s?\b", re.I)
+# Spacing sentences ("gap between the heading and ... is larger") are not text size.
+ICON_RX = re.compile(r"\b(icons?|badges?|logos?)\b", re.I)  # "smaller icons" is not a font size
+SPACING_RX = re.compile(r"\b(gaps?|spacing|space|padding|margins?)\b", re.I)
 PX_RX = re.compile(r"(\d+(?:\.\d+)?)\s*px", re.I)
 def font_size_over_2px(*texts):
     """True unless the issue's px values show a difference of 2px or less (no values: trust the wording)."""
@@ -71,7 +74,7 @@ def types_of(kind, ui, text, component="", sig="", live=""):
         t.append("UI")
         if IMG_RX.search(text): t.append("Missing Image")
         return t
-    fsize = bool(FONT_SIZE_RX.search(sentence)) and font_size_over_2px(text, live)
+    fsize = bool(FONT_SIZE_RX.search(sentence)) and not SPACING_RX.search(sentence) and not ICON_RX.search(sentence) and font_size_over_2px(text, live)
     if ui or fsize:
         rest = FONT_SIZE_RX.sub(" ", sentence) if fsize else sentence
         colour = ui and FONT_RX.search(sentence)

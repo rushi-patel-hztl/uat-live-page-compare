@@ -182,6 +182,12 @@ Write `work/<slug>/findings.json` (UTF-8):
 - Coverage comes from `diff.json` automatically; add a `"coverage"` list only
   to correct it.
 
+Before the report, drop the differences we already know are not issues (the
+"Never report" rules in SKILL.md):
+`py -3.13 <skills>/qa-artifact-from-findings/tracker/known_not_issues.py work/<slug>/findings.json`
+(`<skills>` is the folder above `S/`'s skill). It moves any match to `not_issues` and
+prints what it moved; use the issue count it prints in `batch.py mark ... done`.
+
 Then `py -3.13 S/report.py page <slug>`. It prepends a dated section to
 `reports/<slug>.md` (creating it if new). It also writes
 `work/<slug>/confluence.html`; ignore it, nothing goes to Confluence.

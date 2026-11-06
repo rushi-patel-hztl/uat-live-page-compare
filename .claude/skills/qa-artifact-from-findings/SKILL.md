@@ -27,6 +27,16 @@ Reference artifact in this format: Remote batches 1-2 QA log, https://claude.ai/
 
 Why packs: one artifact holds at most 512 files, and a run has 1,000+ screenshots. `build.py` recompresses the screenshots to JPEG (1280px wide) and stores one base64 text file per page; the page (`data.packs` is true) fetches a page's pack when its first screenshot nears the viewport and shows the images from blob URLs. A page without that flag uses plain screenshot files and falls back to a pack if a file is missing. The host serves only standard types, so the packs are `.txt`, not `.bin` or `.zip`.
 
+## A2. Re-check after fixes (same pages, same artifact)
+
+Keeps each issue's id, so the shared status, assignee and notes survive:
+1. `py -3.12 S/recheck.py snapshot <slugs>`, then `batch.py mark <slug> pending` per slug and capture. Pages that redirect on both sides don't need a re-capture; re-check their redirects with curl.
+2. Workers re-analyse each page and must read `work/<slug>/findings.prev.json`: re-verify every old issue and keep the exact `signature` when it is still there.
+3. `py -3.12 S/recheck.py merge <slugs>`: still failing / new / came back / gone. Known not-issues (`tracker/known_not_issues.py`) are dropped on both sides first, so an item that became "expected" since the last run disappears instead of showing as fixed.
+4. Rebuild with step 2 of section A into the same folder and publish the same `file_path` (or `url`). With `ArtifactData`, set `status: "Fixed"` and `flag: "Verified fixed at re-check <date>"` on each `fixed` key in `work/_recheck_plan.json` (read `issues` first and pin `if_version`; never overwrite a status someone set unless the issue is verified fixed or is failing again).
+
+`build.py` always leaves out known not-issues (it prints each one), so they never reach the tracker even if a worker reported one.
+
 ## B. Several people ran different URLs on their own machines
 
 Each teammate, after their `uat-live-page-compare` run, from their project folder:

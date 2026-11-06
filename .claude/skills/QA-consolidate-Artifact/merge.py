@@ -8,7 +8,7 @@ Writes OUT_DIR/index.html and OUT_DIR/batches/batch_N.json (server-side copy map
 import re, json, sys, os, difflib
 
 out, tpl, *pairs = sys.argv[1:]
-srcs = [p.rsplit('=', 1) for p in pairs]
+srcs = [p.split('=', 1) for p in pairs]
 
 
 def load(f):

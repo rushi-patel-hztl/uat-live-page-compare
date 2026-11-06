@@ -40,6 +40,13 @@ versions) so later tasks skip this. If something fails, tell the user exactly
 what to install (`pip install playwright pillow`; the installed Chrome is
 used, no browser download) and stop.
 
+## Step 0b: Latest rules (every run)
+
+Before planning, run the `sync` skill (fast-forward pull of origin main) so the
+"Never report" rules and scripts are the team's latest. A run on an old copy
+reports differences the team has already accepted. If sync can't fast-forward,
+say so and carry on with the local rules.
+
 ## Step 1: No Confluence
 
 Results never go to Confluence, and don't ask the user for a Confluence page.
@@ -225,6 +232,11 @@ on screen with `browse.py` (a `js` expression per page) for every locale.
 
 ## Comparison ground rules
 
+Every "Never report" rule below also lives as a pattern in
+`qa-artifact-from-findings/tracker/known_not_issues.py`, which workers run before
+writing the report and which the tracker build and re-check merge apply too.
+When you add a "Never report" rule here, add its pattern there in the same commit.
+
 - Report only differences you measured or saw. Every finding has the UAT
   value and the live value.
 - **Pages are captured at 1440px wide** (both sides) so the header shows in
@@ -257,6 +269,18 @@ on screen with `browse.py` (a `js` expression per page) for every locale.
 - Never report the decorative hand-drawn / curved arrow illustration beside
   or above a contact form being missing on UAT (live has it): expected per
   design. Other form differences are still reported on their own.
+- Never report the form variant differences on the registration / contact
+  form: the arrow above the form (also when the same issue adds the tighter
+  card padding or narrower field width that go with it), and the field labels
+  sitting above the inputs on UAT vs floating inside them on live. Still
+  report a dropdown, placeholder, button or consent-text difference on its own.
+- Never report the hero sitting lower under the header on UAT (e.g. image 64px
+  vs 24px below the header), the Q&A / section top padding or the gap below
+  the hero (64px vs 108px) that come from the same padding tokens. Still
+  report a hero image, text, CTA or column-width difference.
+- Never report a missing divider above the first row of a list or checklist
+  (UAT has none, live has a 1px line), the same as for accordions. List text
+  colour #2D2D2D vs #141414 is covered by the body-text rule below.
 - **Never report font size or font weight differences.**
 - Never report body text #2D2D2D (UAT) vs #545454 or #050A52 (live).
 - Never report heading/title text #050A52 navy (UAT) vs #141414 near-black

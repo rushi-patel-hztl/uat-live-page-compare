@@ -13,6 +13,8 @@ import json, pathlib, re, shutil, sys, datetime
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from common import GROUPS, LABEL
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / '.claude/skills/qa-artifact-from-findings/tracker'))
+from known_not_issues import clean as drop_known
 
 W = pathlib.Path('.')
 canon = lambda sig: GROUPS.get(sig, sig)
@@ -45,6 +47,9 @@ def merge(slugs):
     for s in slugs:
         d = W / 'work' / s
         prev, new = load(d / 'findings.prev.json'), load(d / 'findings.json')
+        for doc, name in ((prev, 'previous'), (new, 'new')):
+            for i, sig, why in drop_known(doc):
+                print(f'{s}: {name} #{i} {sig} left out: {why}')
         if new.get('round') == prev.get('round', 1) + 1 and 'resolved_issues' in new:
             sys.exit(f'{s}: findings.json is already merged. Run snapshot and re-analyse first.')
         rnd = prev.get('round', 1) + 1
